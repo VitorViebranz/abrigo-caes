@@ -9,7 +9,7 @@ services:
     restart: unless-stopped
     hostname: abrigo-caes-api
     ports:
-      - "8140:8000"
+      - "8000:8000"
     env_file: .env
     command: >
       sh -c "alembic upgrade head &&
