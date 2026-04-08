@@ -6,6 +6,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from routes import auth_router, users_router, dogs_router, vaccines_router, financial_router
+from middlewares.trace_middleware import TraceIDMiddleware
 
 load_dotenv()
 
@@ -26,6 +27,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.add_middleware(TraceIDMiddleware)
 
 app.include_router(auth_router)
 app.include_router(users_router)

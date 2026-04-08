@@ -1,6 +1,6 @@
 from datetime import date
 from sqlalchemy import select, extract
-from models import Financial, FinancialType
+from models import FinancialModel, FinancialType
 from configs import MySQLConnection
 
 
@@ -9,31 +9,31 @@ class FinancialDAO:
     def __init__(self):
         pass
 
-    def get_all(self, include_inactive: bool = False) -> list[Financial]:
+    def get_all(self, include_inactive: bool = False) -> list[FinancialModel]:
         with MySQLConnection() as session:
-            stmt = select(Financial)
+            stmt = select(FinancialModel)
             if not include_inactive:
-                stmt = stmt.where(Financial.is_active == True)
-            return session.execute(stmt.order_by(Financial.date.desc())).scalars().all()
+                stmt = stmt.where(FinancialModel.is_active == True)
+            return session.execute(stmt.order_by(FinancialModel.date.desc())).scalars().all()
 
-    def get_by_id(self, record_id: int) -> Financial | None:
+    def get_by_id(self, record_id: int) -> FinancialModel | None:
         with MySQLConnection() as session:
             return session.execute(
-                select(Financial).where(Financial.id == record_id)
+                select(FinancialModel).where(FinancialModel.id == record_id)
             ).scalar_one_or_none()
 
-    def get_by_month(self, year: int, month: int) -> list[Financial]:
+    def get_by_month(self, year: int, month: int) -> list[FinancialModel]:
         with MySQLConnection() as session:
             return session.execute(
-                select(Financial).where(
-                    Financial.is_active == True,
-                    extract("year", Financial.date) == year,
-                    extract("month", Financial.date) == month,
-                ).order_by(Financial.date.desc())
+                select(FinancialModel).where(
+                    FinancialModel.is_active == True,
+                    extract("year", FinancialModel.date) == year,
+                    extract("month", FinancialModel.date) == month,
+                ).order_by(FinancialModel.date.desc())
             ).scalars().all()
 
-    def create(self, **kwargs) -> Financial:
-        record = Financial(**kwargs)
+    def create(self, **kwargs) -> FinancialModel:
+        record = FinancialModel(**kwargs)
         with MySQLConnection() as session:
             session.add(record)
             session.flush()
@@ -41,13 +41,9 @@ class FinancialDAO:
             return record
 
     def deactivate(self, record_id: int) -> bool:
-        """
-        Business rule: financial records cannot be deleted.
-        Only deactivation is allowed.
-        """
         with MySQLConnection() as session:
             record = session.execute(
-                select(Financial).where(Financial.id == record_id)
+                select(FinancialModel).where(FinancialModel.id == record_id)
             ).scalar_one_or_none()
             if not record:
                 return False

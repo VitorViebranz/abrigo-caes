@@ -22,8 +22,8 @@ def upgrade() -> None:
         sa.Column("email",           sa.String(100),   nullable=False),
         sa.Column("hashed_password", sa.String(255),   nullable=False),
         sa.Column("is_active",       sa.Boolean(),     nullable=False, server_default="1"),
-        sa.Column("role",            sa.Enum("admin", "voluntario", "financeiro", name="userrole"),
-                                     nullable=False, server_default="voluntario"),
+        sa.Column("role",            sa.Enum("admin", "funcionario", name="userrole"),
+                                     nullable=False, server_default="funcionario"),
         sa.Column("created_at",      sa.DateTime(),    nullable=True),
         sa.UniqueConstraint("email", name="uq_users_email"),
     )

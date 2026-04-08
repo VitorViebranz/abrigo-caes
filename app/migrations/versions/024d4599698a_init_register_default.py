@@ -24,13 +24,13 @@ SEED_USERS = [
         "full_name": "Maria Voluntária",
         "email": "voluntaria@abrigo.com",
         "password": "Voluntario@2025",
-        "role": "voluntario",
+        "role": "funcionario",
     },
     {
         "full_name": "João Financeiro",
         "email": "financeiro@abrigo.com",
         "password": "Financeiro@2025",
-        "role": "financeiro",
+        "role": "funcionario",
     },
 ]
 

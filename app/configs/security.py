@@ -7,11 +7,11 @@ from fastapi.security import OAuth2PasswordBearer
 
 load_dotenv()
 
-SECRET_KEY     = os.getenv("JWT_SECRET_KEY", "unsafe_default_key")
-ALGORITHM      = os.getenv("JWT_ALGORITHM", "HS256")
+SECRET_KEY = os.getenv("JWT_SECRET_KEY", "unsafe_default_key")
+ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
 EXPIRE_MINUTES = int(os.getenv("JWT_EXPIRE_MINUTES", 480))
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/token")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
 
 def create_access_token(data: dict) -> str:
@@ -20,32 +20,50 @@ def create_access_token(data: dict) -> str:
     return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
 
 
-def verify_token(token: str = Depends(oauth2_scheme)) -> dict:
+def verify_token(token: str = Depends(oauth2_scheme)):
+    from daos.user_dao import UserDAO
+    
     exc = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Invalid or expired token.",
+        detail="Token inválido ou expirado.",
         headers={"WWW-Authenticate": "Bearer"},
     )
+    
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        if payload.get("sub") is None:
-            raise exc
-        return payload
+        jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+
+        user_dao = UserDAO()
+        user = user_dao.get_by_token(token)
+
+        if not user or not user.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Token inválido ou sessão encerrada.",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+        if user.token_expires_at and user.token_expires_at.replace(tzinfo=timezone.utc) < datetime.now(timezone.utc):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Token expirado no banco de dados.",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        return user
+
     except JWTError:
         raise exc
 
 
 def _require_role(*allowed_roles: str):
-    def dependency(payload: dict = Depends(verify_token)) -> dict:
-        if payload.get("role") not in allowed_roles:
+    def dependency(current_user = Depends(verify_token)):
+        if current_user.role not in allowed_roles:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"Access restricted. Required role(s): {', '.join(allowed_roles)}.",
+                detail=f"Acesso restrito. Perfis necessários: {', '.join(allowed_roles)}.",
             )
-        return payload
+        return current_user
     return dependency
 
-
-require_admin               = _require_role("admin")
+require_admin = _require_role("admin")
 require_volunteer_or_admin  = _require_role("admin", "voluntario")
 require_financial_or_admin  = _require_role("admin", "financeiro")

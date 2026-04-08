@@ -1,5 +1,8 @@
+from datetime import datetime, timedelta, timezone
+
 from fastapi import HTTPException, status
 
+from configs.security import EXPIRE_MINUTES
 from configs import create_access_token
 from daos import UserDAO
 from schemas import LoginRequest, TokenResponse
@@ -32,10 +35,11 @@ class AuthService:
             raise invalid_credentials
 
         token = create_access_token({
-            "sub":  user.email,
-            "id":   user.id,
-            "role": user.role,
+            "sub": str(user.id)
         })
+
+        expires_at = datetime.now(timezone.utc) + timedelta(minutes=EXPIRE_MINUTES)
+        self._dao.update_token(user.id, token, expires_at)
 
         return TokenResponse(
             access_token=token,
