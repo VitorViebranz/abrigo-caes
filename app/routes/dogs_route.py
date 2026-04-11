@@ -13,7 +13,7 @@ dogs_router = APIRouter(prefix="/dogs", tags=["Dogs"])
     response_model=list[DogResponse],
     summary="List all active dogs"
 )
-@route_logger()
+@route_logger
 def get_all_dogs(
     request: Request,
     include_inactive: bool = False,
@@ -23,13 +23,14 @@ def get_all_dogs(
     return service.get_all(include_inactive=include_inactive)
 
 
-@route_logger()
 @dogs_router.get(
     "/{dog_id}",
     response_model=DogResponse,
     summary="Get a dog by ID"
 )
+@route_logger
 def get_dog(
+    request: Request,
     dog_id: int, 
     service: DogService = Depends(DogService),
     current_user: dict = Depends(verify_token)
@@ -37,57 +38,58 @@ def get_dog(
     return service.get_by_id(dog_id)
 
 
-@route_logger()
 @dogs_router.post(
     "",
-    response_model=DogResponse,
     status_code=201,
-    summary="[VOLUNTEER/ADMIN] Register a new dog"
+    summary="[FUNCIONARIO/ADMIN] Register a new dog"
 )
+@route_logger
 def create_dog(
-    request: DogCreateRequest, 
+    request: Request,
+    dog_create: DogCreateRequest, 
     service: DogService = Depends(DogService),
     current_user: dict = Depends(verify_token)
 ):
-    return service.create(request)
+    return service.create(dog_create)
 
 
-@route_logger()
 @dogs_router.patch(
     "/{dog_id}",
-    response_model=DogResponse,
-    summary="[VOLUNTEER/ADMIN] Update dog details"
+    summary="[FUNCIONARIO/ADMIN] Update dog details"
 )
+@route_logger
 def update_dog(
+    request: Request,
     dog_id: int, 
-    request: DogUpdateRequest, 
+    dog_update: DogUpdateRequest, 
     service: DogService = Depends(DogService),
     current_user: dict = Depends(verify_token)
 ):
-    return service.update(dog_id, request)
+    return service.update(dog_id, dog_update)
 
 
-@route_logger()
 @dogs_router.patch(
     "/{dog_id}/status",
-    response_model=DogResponse,
-    summary="[VOLUNTEER/ADMIN] Update adoption status (rules enforced)"
+    summary="[FUNCIONARIO/ADMIN] Update adoption status (rules enforced)"
 )
+@route_logger
 def update_dog_status(
+    request: Request,
     dog_id: int,
-    request: DogStatusUpdateRequest,
+    dog_status_update: DogStatusUpdateRequest,
     service: DogService = Depends(DogService),
     current_user: dict = Depends(verify_token)
 ):
-    return service.update_status(dog_id, request)
+    return service.update_status(dog_id, dog_status_update)
 
 
-@route_logger()
 @dogs_router.delete(
     "/{dog_id}",
-    summary="[ADMIN] Deactivate a dog (soft delete)"
+    summary="[FUNCIONARIO/ADMIN] Deactivate a dog (soft delete)"
 )
+@route_logger
 def deactivate_dog(
+    request: Request,
     dog_id: int,
     service: DogService = Depends(DogService),
     current_user: dict = Depends(verify_token)

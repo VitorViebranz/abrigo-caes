@@ -1,53 +1,106 @@
-import inspect
 from functools import wraps
-from fastapi import Request, HTTPException
-from configs.logger import custom_log
-from configs.context import get_trace_id
+from fastapi import HTTPException, Request
+from inspect import signature, iscoroutinefunction
+from pydantic import ValidationError
+from loguru import logger
 
-def route_logger():
-    def decorator(func):
-        
-        def _get_logger_and_log_start(*args, **kwargs):
-            request: Request = kwargs.get("request") or next((arg for arg in args if isinstance(arg, Request)), None)
-            route = request.url.path if request else func.__name__
-            method = request.method if request else "N/A"
-            
-            t_id = get_trace_id()
-            if not t_id and request and hasattr(request.state, "trace_id"):
-                t_id = request.state.trace_id
-                
-            bound_logger = custom_log.bind(route=route, method=method, trace_id=t_id or "N/A")
-            bound_logger.info(f"Iniciando requisição [{method}] {route}")
-            return bound_logger
 
-        if inspect.iscoroutinefunction(func):
-            @wraps(func)
-            async def async_wrapper(*args, **kwargs):
-                bound_logger = _get_logger_and_log_start(*args, **kwargs)
-                try:
-                    response = await func(*args, **kwargs)
-                    bound_logger.info("Requisição finalizada com sucesso.")
-                    return response
-                except Exception as e:
-                    bound_logger.exception(f"Exceção capturada na rota: {str(e)}")
-                    if isinstance(e, HTTPException):
-                        raise e
-                    raise HTTPException(status_code=500, detail="Erro interno no servidor.")
-            return async_wrapper
+def _extract_request(handler, args, kwargs) -> Request | None:
+    request = kwargs.get("request")
+    if isinstance(request, Request):
+        return request
 
-        else:
-            @wraps(func)
-            def sync_wrapper(*args, **kwargs):
-                bound_logger = _get_logger_and_log_start(*args, **kwargs)
-                try:
-                    response = func(*args, **kwargs)
-                    bound_logger.info("Requisição finalizada com sucesso.")
-                    return response
-                except Exception as e:
-                    bound_logger.exception(f"Exceção capturada na rota: {str(e)}")
-                    if isinstance(e, HTTPException):
-                        raise e
-                    raise HTTPException(status_code=500, detail="Erro interno no servidor.")
-            return sync_wrapper
+    for arg in args:
+        if isinstance(arg, Request):
+            return arg
 
-    return decorator
+    sig = signature(handler)
+    bound = sig.bind_partial(*args, **kwargs)
+    for value in bound.arguments.values():
+        if isinstance(value, Request):
+            return value
+
+    return None
+
+
+def route_logger(handler):
+    if iscoroutinefunction(handler):
+        @wraps(handler)
+        async def async_wrapper(*args, **kwargs):
+            request = _extract_request(handler, args, kwargs)
+
+            if request:
+                logger.info(
+                    f"[{request.method} {request.url.path}] Requisição recebida | IP: {request.client.host}"
+                )
+
+            try:
+                return await handler(*args, **kwargs)
+            except HTTPException as http_exc:
+                logger.warning(
+                    f"[{request.url.path}] HTTPException capturada: {http_exc.detail}"
+                    if request
+                    else f"HTTPException capturada: {http_exc.detail}"
+                )
+                raise http_exc
+            except ValidationError as val_err:
+                logger.error(
+                    f"[{request.url.path}] Erro de validação Pydantic: {val_err.errors()}"
+                    if request
+                    else "Erro de validação Pydantic"
+                )
+                raise HTTPException(
+                    status_code=422, detail="Campo inválido ou não informado."
+                )
+            except Exception:
+                logger.exception(
+                    f"[{request.url.path}] Erro inesperado na rota"
+                    if request
+                    else "Erro inesperado na rota"
+                )
+                raise HTTPException(status_code=500, detail="Erro interno no servidor")
+
+        return async_wrapper
+
+    @wraps(handler)
+    def sync_wrapper(*args, **kwargs):
+        request = _extract_request(handler, args, kwargs)
+
+        if request:
+            logger.info(
+                f"[{request.method} {request.url.path}] Requisição recebida | IP: {request.client.host}"
+            )
+
+        try:
+            return handler(*args, **kwargs)
+        except HTTPException as http_exc:
+            logger.warning(
+                f"[{request.url.path}] HTTPException capturada: {http_exc.detail}"
+                if request
+                else f"HTTPException capturada: {http_exc.detail}"
+            )
+            raise http_exc
+        except ValidationError as val_err:
+            logger.error(
+                f"[{request.url.path}] Erro de validação Pydantic: {val_err.errors()}"
+                if request
+                else "Erro de validação Pydantic"
+            )
+            raise HTTPException(
+                status_code=422, detail="Campo inválido ou não informado."
+            )
+        except Exception:
+            logger.exception(
+                f"[{request.url.path}] Erro inesperado na rota"
+                if request
+                else "Erro inesperado na rota"
+            )
+            raise HTTPException(status_code=500, detail="Erro interno no servidor")
+        finally:
+            logger.info(
+                f"[{request.method} {request.url.path}] Requisição finalizada | IP: {request.client.host}"
+                if request
+                else "Requisição finalizada"
+            )
+
+    return sync_wrapper

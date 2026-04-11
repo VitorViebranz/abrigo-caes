@@ -1,5 +1,5 @@
 from datetime import date, timedelta
-from sqlalchemy import select
+from sqlalchemy import insert, select
 from models import VaccineModel
 from configs import MySQLConnection
 
@@ -60,3 +60,16 @@ class VaccineDAO:
             session.flush()
             session.refresh(vaccine)
             return vaccine
+        
+    def create_bulk(self, dog_id: int, vaccines: list[dict], session: any) -> None:
+        stmt_insert = insert(VaccineModel).values([
+            {
+                "dog_id": dog_id,
+                "name": vaccine.name,
+                "application_date": vaccine.application_date,
+                "next_dose": vaccine.next_dose,
+                "notes": vaccine.notes
+            }
+            for vaccine in vaccines
+        ])
+        session.execute(stmt_insert)

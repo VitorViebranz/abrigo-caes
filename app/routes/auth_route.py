@@ -7,8 +7,8 @@ from configs import route_logger
 
 auth_router = APIRouter(prefix="/auth", tags=["Authentication"])
 
-@route_logger()
 @auth_router.post("/login", response_model=TokenResponse, summary="Login (Integrado com Swagger)")
+@route_logger
 def login(
     form_data: OAuth2PasswordRequestForm = Depends(),
     service: AuthService = Depends(AuthService)
