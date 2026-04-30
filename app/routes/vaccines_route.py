@@ -1,19 +1,24 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 
 from configs import require_volunteer_or_admin
+from configs.decorators import route_logger
 from schemas import VaccineCreateRequest, VaccineUpdateRequest, VaccineResponse, VaccineAlertResponse
 from services import VaccineService
 
-vaccines_router = APIRouter(prefix="/vaccines", tags=["Vaccines"])
+vaccines_router = APIRouter(
+    prefix="/vaccines",
+    tags=["Vaccines"],
+    dependencies=[Depends(require_volunteer_or_admin)],
+)
 
 
 @vaccines_router.get(
     "/alerts/overdue",
     response_model=list[VaccineAlertResponse],
     summary="[VOLUNTEER/ADMIN] List overdue vaccines",
-    dependencies=[Depends(require_volunteer_or_admin)],
 )
-def get_overdue_vaccines(service: VaccineService = Depends(VaccineService)):
+@route_logger
+def get_overdue_vaccines(request: Request, service: VaccineService = Depends(VaccineService)):
     return service.get_overdue_alerts()
 
 
@@ -21,9 +26,10 @@ def get_overdue_vaccines(service: VaccineService = Depends(VaccineService)):
     "/alerts/due-soon",
     response_model=list[VaccineAlertResponse],
     summary="[VOLUNTEER/ADMIN] List vaccines due within N days (default 7)",
-    dependencies=[Depends(require_volunteer_or_admin)],
 )
+@route_logger
 def get_due_soon_vaccines(
+    request: Request,
     days: int = 7,
     service: VaccineService = Depends(VaccineService),
 ):
@@ -34,9 +40,13 @@ def get_due_soon_vaccines(
     "/dog/{dog_id}",
     response_model=list[VaccineResponse],
     summary="[VOLUNTEER/ADMIN] List all vaccines for a dog",
-    dependencies=[Depends(require_volunteer_or_admin)],
 )
-def get_vaccines_by_dog(dog_id: int, service: VaccineService = Depends(VaccineService)):
+@route_logger
+def get_vaccines_by_dog(
+    request: Request,
+    dog_id: int,
+    service: VaccineService = Depends(VaccineService),
+):
     return service.get_by_dog(dog_id)
 
 
@@ -45,21 +55,39 @@ def get_vaccines_by_dog(dog_id: int, service: VaccineService = Depends(VaccineSe
     response_model=VaccineResponse,
     status_code=201,
     summary="[VOLUNTEER/ADMIN] Register a new vaccine",
-    dependencies=[Depends(require_volunteer_or_admin)],
 )
-def create_vaccine(request: VaccineCreateRequest, service: VaccineService = Depends(VaccineService)):
-    return service.create(request)
+@route_logger
+def create_vaccine(
+    request: Request,
+    body: VaccineCreateRequest,
+    service: VaccineService = Depends(VaccineService),
+):
+    return service.create(body)
 
 
 @vaccines_router.patch(
     "/{vaccine_id}",
     response_model=VaccineResponse,
     summary="[VOLUNTEER/ADMIN] Update a vaccine record",
-    dependencies=[Depends(require_volunteer_or_admin)],
 )
+@route_logger
 def update_vaccine(
+    request: Request,
     vaccine_id: int,
-    request: VaccineUpdateRequest,
+    body: VaccineUpdateRequest,
     service: VaccineService = Depends(VaccineService),
 ):
-    return service.update(vaccine_id, request)
+    return service.update(vaccine_id, body)
+
+
+@vaccines_router.delete(
+    "/{vaccine_id}",
+    summary="[VOLUNTEER/ADMIN] Deactivate a vaccine record (soft delete)",
+)
+@route_logger
+def deactivate_vaccine(
+    request: Request,
+    vaccine_id: int,
+    service: VaccineService = Depends(VaccineService),
+):
+    return service.deactivate(vaccine_id)

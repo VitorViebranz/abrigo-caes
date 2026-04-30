@@ -38,6 +38,12 @@ class VaccineService:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Vaccine not found.")
         return VaccineResponse.model_validate(vaccine)
 
+    def deactivate(self, vaccine_id: int) -> dict:
+        deactivated = self._dao.deactivate(vaccine_id)
+        if not deactivated:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Vaccine not found.")
+        return {"message": "Vaccine record deactivated successfully."}
+
     def get_overdue_alerts(self) -> list[VaccineAlertResponse]:
         vaccines = self._dao.get_overdue()
         return self._build_alerts(vaccines, status_label="overdue")

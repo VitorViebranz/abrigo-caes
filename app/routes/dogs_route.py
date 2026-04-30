@@ -40,6 +40,7 @@ def get_dog(
 
 @dogs_router.post(
     "",
+    response_model=DogResponse,
     status_code=201,
     summary="[FUNCIONARIO/ADMIN] Register a new dog"
 )
