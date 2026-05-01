@@ -37,6 +37,19 @@ class UserDAO:
             session.commit()
             return self.get_by_email(email)
 
+    def update(self, user_id: int, **kwargs) -> User | None:
+        with MySQLConnection() as session:
+            stmt = (
+                update(User)
+                .where(User.id == user_id)
+                .values(**kwargs)
+            )
+            result = session.execute(stmt)
+            if result.rowcount == 0:
+                return None
+            session.commit()
+            return self.get_by_id(user_id)
+
     def update_active(self, user_id: int, is_active: bool) -> User | None:
         with MySQLConnection() as session:
             stmt = (

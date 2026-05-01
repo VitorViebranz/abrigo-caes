@@ -15,6 +15,15 @@ class FinancialService:
         records = self._dao.get_all()
         return [FinancialResponse.model_validate(r) for r in records]
 
+    def get_by_id(self, record_id: int) -> FinancialResponse:
+        record = self._dao.get_by_id(record_id)
+        if not record or not record.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Financial record not found.",
+            )
+        return FinancialResponse.model_validate(record)
+
     def create(self, request: FinancialCreateRequest) -> FinancialResponse:
         record = self._dao.create(**request.model_dump())
         return FinancialResponse.model_validate(record)

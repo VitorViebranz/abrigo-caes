@@ -49,6 +49,8 @@ class DogDAO:
             if dog_create.vaccines:
                 self._vaccine_dao.create_bulk(dog_id, dog_create.vaccines, session)
 
+        return self.get_by_id(dog_id)
+
     def update(self, dog_id: int, dog_update: DogUpdateRequest) -> DogModel | None:
         with MySQLConnection() as session:
             stmt_update = (

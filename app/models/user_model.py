@@ -7,7 +7,8 @@ import enum
 
 class UserRole(str, enum.Enum):
     admin = "admin"
-    funcionario = "funcionario"
+    voluntario = "voluntario"
+    financeiro = "financeiro"
 
 
 class UserModel(BaseModel):
@@ -18,7 +19,7 @@ class UserModel(BaseModel):
     email = Column(String(100), unique=True, nullable=False, index=True)
     hashed_password = Column(String(255), nullable=False)
     is_active = Column(Boolean, default=True, nullable=False)
-    role = Column(Enum(UserRole), nullable=False, default=UserRole.funcionario)
+    role = Column(Enum(UserRole), nullable=False, default=UserRole.voluntario)
     token = Column(Text, nullable=True)
     token_expires_at = Column(DateTime, nullable=True)
 

@@ -1,9 +1,9 @@
 import sys
 from loguru import logger
 from .context import get_trace_id
-from daos import LogDAO 
 
 def database_sink(message):
+    from daos import LogDAO
     record = message.record
     trace_id = record["extra"].get("trace_id", get_trace_id())
     route = record["extra"].get("route")

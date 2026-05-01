@@ -30,6 +30,7 @@ class VaccineResponse(BaseModel):
     application_date: date
     next_dose: date | None
     notes: str | None
+    is_active: bool
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
