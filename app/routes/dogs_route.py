@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, Request
 
 from configs.decorators import route_logger
 from configs.security import verify_token
+from dependencies import PermissionChecker
 from schemas import DogCreateRequest, DogUpdateRequest, DogStatusUpdateRequest, DogResponse
 from services import DogService
 
@@ -18,7 +19,7 @@ def get_all_dogs(
     request: Request,
     include_inactive: bool = False,
     service: DogService = Depends(DogService),
-    current_user: dict = Depends(verify_token)
+    current_user: dict = Depends(PermissionChecker("manage_dogs"))
 ):
     return service.get_all(include_inactive=include_inactive)
 
@@ -33,7 +34,7 @@ def get_dog(
     request: Request,
     dog_id: int, 
     service: DogService = Depends(DogService),
-    current_user: dict = Depends(verify_token)
+    current_user: dict = Depends(PermissionChecker("manage_dogs"))
 ):
     return service.get_by_id(dog_id)
 
@@ -49,7 +50,7 @@ def create_dog(
     request: Request,
     dog_create: DogCreateRequest, 
     service: DogService = Depends(DogService),
-    current_user: dict = Depends(verify_token)
+    current_user: dict = Depends(PermissionChecker("manage_dogs"))
 ):
     return service.create(dog_create)
 
@@ -64,7 +65,7 @@ def update_dog(
     dog_id: int, 
     dog_update: DogUpdateRequest, 
     service: DogService = Depends(DogService),
-    current_user: dict = Depends(verify_token)
+    current_user: dict = Depends(PermissionChecker("manage_dogs"))
 ):
     return service.update(dog_id, dog_update)
 
@@ -79,7 +80,7 @@ def update_dog_status(
     dog_id: int,
     dog_status_update: DogStatusUpdateRequest,
     service: DogService = Depends(DogService),
-    current_user: dict = Depends(verify_token)
+    current_user: dict = Depends(PermissionChecker("manage_dogs"))
 ):
     return service.update_status(dog_id, dog_status_update)
 
@@ -93,6 +94,6 @@ def deactivate_dog(
     request: Request,
     dog_id: int,
     service: DogService = Depends(DogService),
-    current_user: dict = Depends(verify_token)
+    current_user: dict = Depends(PermissionChecker("manage_dogs"))
 ):
     return service.deactivate(dog_id)

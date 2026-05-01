@@ -1,12 +1,15 @@
 from fastapi import APIRouter, Depends, Request
 
-from configs.security import verify_token
 from configs.decorators import route_logger
+from dependencies import PermissionChecker
 from schemas import UserCreateRequest, UserUpdateRequest, UserResponse
 from services import UserService
 
-users_router = APIRouter(prefix="/users", tags=["Users"])
-
+users_router = APIRouter(
+    prefix="/users", 
+    tags=["Users"],
+    dependencies=[Depends(PermissionChecker("manage_all"))]
+)
 
 @users_router.get(
     "",
@@ -16,11 +19,9 @@ users_router = APIRouter(prefix="/users", tags=["Users"])
 @route_logger
 def get_all_users(
     request: Request,
-    service: UserService = Depends(UserService),
-    current_user: dict = Depends(verify_token)
+    service: UserService = Depends(UserService)
 ):
     return service.get_all()
-
 
 @users_router.get(
     "/{user_id}",
@@ -31,11 +32,9 @@ def get_all_users(
 def get_user(
     request: Request,
     user_id: int,
-    service: UserService = Depends(UserService),
-    current_user: dict = Depends(verify_token)
+    service: UserService = Depends(UserService)
 ):
     return service.get_by_id(user_id)
-
 
 @users_router.post(
     "",
@@ -47,11 +46,9 @@ def get_user(
 def create_user(
     request: Request,
     body: UserCreateRequest,
-    service: UserService = Depends(UserService),
-    current_user: dict = Depends(verify_token)
+    service: UserService = Depends(UserService)
 ):
     return service.create(body)
-
 
 @users_router.patch(
     "/{user_id}",
@@ -63,11 +60,9 @@ def update_user(
     request: Request,
     user_id: int,
     body: UserUpdateRequest,
-    service: UserService = Depends(UserService),
-    current_user: dict = Depends(verify_token)
+    service: UserService = Depends(UserService)
 ):
     return service.update(user_id, body)
-
 
 @users_router.patch(
     "/{user_id}/deactivate",
@@ -77,11 +72,9 @@ def update_user(
 def deactivate_user(
     request: Request,
     user_id: int,
-    service: UserService = Depends(UserService),
-    current_user: dict = Depends(verify_token)
+    service: UserService = Depends(UserService)
 ):
     return service.deactivate(user_id)
-
 
 @users_router.patch(
     "/{user_id}/activate",
@@ -91,7 +84,6 @@ def deactivate_user(
 def activate_user(
     request: Request,
     user_id: int,
-    service: UserService = Depends(UserService),
-    current_user: dict = Depends(verify_token)
+    service: UserService = Depends(UserService)
 ):
     return service.activate(user_id)

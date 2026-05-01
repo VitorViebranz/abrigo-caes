@@ -41,9 +41,10 @@ class AuthService:
         expires_at = datetime.now(timezone.utc) + timedelta(minutes=EXPIRE_MINUTES)
         self._dao.update_token(user.id, token, expires_at)
 
+        role_value = getattr(user.role, "name", None) or getattr(user.role, "value", None) or user.role
         return TokenResponse(
             access_token=token,
             user_name=user.full_name,
             user_email=user.email,
-            role=user.role,
+            role=role_value,
         )

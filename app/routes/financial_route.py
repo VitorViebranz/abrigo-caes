@@ -1,17 +1,15 @@
 from fastapi import APIRouter, Depends, Request
 
-from configs.security import verify_token
-from configs import require_financial_or_admin
 from configs.decorators import route_logger
+from dependencies import PermissionChecker
 from schemas import FinancialCreateRequest, FinancialResponse, MonthlyReportResponse
 from services import FinancialService
 
 financial_router = APIRouter(
     prefix="/financial",
     tags=["Financial"],
-    dependencies=[Depends(require_financial_or_admin)],
+    dependencies=[Depends(PermissionChecker("manage_finances"))],
 )
-
 
 @financial_router.get(
     "",
@@ -21,7 +19,6 @@ financial_router = APIRouter(
 @route_logger
 def get_all(request: Request, service: FinancialService = Depends(FinancialService)):
     return service.get_all()
-
 
 @financial_router.get(
     "/report/{year}/{month}",
@@ -37,7 +34,6 @@ def monthly_report(
 ):
     return service.get_monthly_report(year, month)
 
-
 @financial_router.get(
     "/{record_id}",
     response_model=FinancialResponse,
@@ -50,7 +46,6 @@ def get_record(
     service: FinancialService = Depends(FinancialService),
 ):
     return service.get_by_id(record_id)
-
 
 @financial_router.post(
     "",
@@ -65,7 +60,6 @@ def create_record(
     service: FinancialService = Depends(FinancialService),
 ):
     return service.create(body)
-
 
 @financial_router.patch(
     "/{record_id}/deactivate",

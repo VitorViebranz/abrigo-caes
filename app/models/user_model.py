@@ -1,14 +1,7 @@
 from datetime import datetime, timezone
-from sqlalchemy import Boolean, Column, DateTime, Enum, Integer, String, Text
+from sqlalchemy import Boolean, Column, DateTime, Integer, String, Text, ForeignKey
+from sqlalchemy.orm import relationship
 from .base_model import BaseModel
-
-import enum
-
-
-class UserRole(str, enum.Enum):
-    admin = "admin"
-    voluntario = "voluntario"
-    financeiro = "financeiro"
 
 
 class UserModel(BaseModel):
@@ -19,7 +12,8 @@ class UserModel(BaseModel):
     email = Column(String(100), unique=True, nullable=False, index=True)
     hashed_password = Column(String(255), nullable=False)
     is_active = Column(Boolean, default=True, nullable=False)
-    role = Column(Enum(UserRole), nullable=False, default=UserRole.voluntario)
+    role_id = Column(Integer, ForeignKey("roles.id"), nullable=True)
+    role = relationship("RoleModel", lazy="joined")
     token = Column(Text, nullable=True)
     token_expires_at = Column(DateTime, nullable=True)
 

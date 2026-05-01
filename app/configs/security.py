@@ -56,7 +56,8 @@ def verify_token(token: str = Depends(oauth2_scheme)):
 
 def _require_role(*allowed_roles: str):
     def dependency(current_user = Depends(verify_token)):
-        if current_user.role not in allowed_roles:
+        role_name = getattr(current_user.role, "name", None) or getattr(current_user.role, "value", None) or current_user.role
+        if role_name not in allowed_roles:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail=f"Acesso restrito. Perfis necessários: {', '.join(allowed_roles)}.",

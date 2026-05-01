@@ -1,7 +1,7 @@
 import datetime
 
 from sqlalchemy import insert, select, update
-from models import UserModel as User, UserRole
+from models import UserModel as User, RoleModel
 from configs import MySQLConnection
 
 
@@ -13,12 +13,12 @@ class UserDAO:
     def get_all(self) -> list[User]:
         with MySQLConnection() as session:
             stmt = select(User)
-            return session.execute(stmt).scalars().all()
+            return session.execute(stmt).unique().scalars().all()
 
     def get_by_email(self, email: str) -> User | None:
         with MySQLConnection() as session:
             stmt = select(User).where(User.email == email)
-            return session.execute(stmt).scalar_one_or_none()
+            return session.execute(stmt).unique().scalar_one_or_none()
 
     def get_by_id(self, user_id: int) -> User | None:
         with MySQLConnection() as session:
@@ -27,11 +27,19 @@ class UserDAO:
 
     def create(self, full_name: str, email: str, hashed_password: str, role: str = "voluntario") -> User:
         with MySQLConnection() as session:
+            # resolve role name to id if provided
+            role_id = None
+            if role:
+                role_stmt = select(RoleModel).where(RoleModel.name == role)
+                role_obj = session.execute(role_stmt).scalar_one_or_none()
+                if role_obj:
+                    role_id = role_obj.id
+
             stmt = insert(User).values(
                 full_name=full_name,
                 email=email,
                 hashed_password=hashed_password,
-                role=role,
+                role_id=role_id,
             )
             session.execute(stmt)
             session.commit()
@@ -75,4 +83,4 @@ class UserDAO:
     def get_by_token(self, token: str) -> User | None:
         with MySQLConnection() as session:
             stmt = select(User).where(User.token == token)
-            return session.execute(stmt).scalar_one_or_none()
+            return session.execute(stmt).unique().scalar_one_or_none()

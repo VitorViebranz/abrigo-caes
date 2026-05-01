@@ -1,5 +1,6 @@
 from datetime import datetime
-from pydantic import BaseModel, ConfigDict, EmailStr
+from alembic.environment import Any
+from pydantic import BaseModel, ConfigDict, EmailStr, field_validator
 
 
 class LoginRequest(BaseModel):
@@ -31,8 +32,18 @@ class UserResponse(BaseModel):
     id: int
     full_name: str
     email: str
-    role: str
     is_active: bool
-    created_at: datetime
+    role: str # O campo continua sendo string na resposta da API
+    
+    # Se você tiver esses campos:
+    # token: Optional[str] = None
+    # created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+    @field_validator("role", mode="before")
+    @classmethod
+    def extract_role_name(cls, v: Any) -> str:
+        if hasattr(v, "name"):
+            return v.name
+        return v

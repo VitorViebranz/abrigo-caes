@@ -1,12 +1,8 @@
 from fastapi import HTTPException, status
 
 from daos import UserDAO
-from models import UserRole
 from schemas import UserCreateRequest, UserUpdateRequest, UserResponse
 from utils import hash_password
-
-
-_VALID_ROLES = {role.value for role in UserRole}
 
 
 class UserService:
@@ -32,11 +28,6 @@ class UserService:
                 detail=f"Email '{request.email}' is already registered.",
             )
 
-        if request.role not in _VALID_ROLES:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Invalid role. Must be one of: {', '.join(sorted(_VALID_ROLES))}.",
-            )
 
         user = self._dao.create(
             full_name=request.full_name,
@@ -54,11 +45,6 @@ class UserService:
                 detail="No fields provided for update.",
             )
 
-        if "role" in updates and updates["role"] not in _VALID_ROLES:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Invalid role. Must be one of: {', '.join(sorted(_VALID_ROLES))}.",
-            )
 
         user = self._dao.update(user_id, **updates)
         if not user:
