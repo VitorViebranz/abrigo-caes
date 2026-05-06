@@ -12,7 +12,7 @@ load_dotenv()
 _ENGINE_CACHE: dict[str, object] = {}
 
 
-class MySQLConnection:
+class PostgresConnection:
     def __init__(
         self,
         *,
@@ -50,11 +50,11 @@ class MySQLConnection:
         self.SessionFactory = sessionmaker(bind=self.engine, expire_on_commit=False)
 
     def _get_connection_string_from_env(self) -> str:
-        username = os.getenv("MYSQL_USER", "root")
-        password = urllib.parse.quote_plus(os.getenv("MYSQL_PASSWORD", ""))
-        server   = os.getenv("MYSQL_SERVER", "localhost")
-        database = os.getenv("MYSQL_DATABASE", "")
-        return f"mysql+pymysql://{username}:{password}@{server}/{database}"
+        username = os.getenv("POSTGRES_USER", "postgres")
+        password = urllib.parse.quote_plus(os.getenv("POSTGRES_PASSWORD", ""))
+        server   = os.getenv("POSTGRES_SERVER", "localhost")
+        database = os.getenv("POSTGRES_DB", "")
+        return f"postgresql+psycopg2://{username}:{password}@{server}/{database}"
 
     def get_session(self) -> Session:
         return self.SessionFactory()

@@ -1,4 +1,4 @@
-name: abrigo-caes
+name: abrigo-animais
 
 services:
   api:
@@ -7,7 +7,7 @@ services:
     mem_limit: 256m
     mem_reservation: 128m
     restart: unless-stopped
-    hostname: abrigo-caes-api
+    hostname: abrigo-animais-api
     ports:
       - "8000:8000"
     env_file: .env
@@ -25,22 +25,21 @@ services:
       start_period: 15s
 
   db:
-    image: mysql:9.4.0
+    image: postgres:16
     ports:
-      - "8140:3306"
+      - "8140:5432"
     restart: unless-stopped
     cpus: 1
     mem_limit: 256m
     mem_reservation: 128m
     environment:
-      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
-      - MYSQL_DATABASE=${MYSQL_DATABASE}
-      - MYSQL_USER=${MYSQL_USER}
-      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
     volumes:
-      - db-volume:/var/lib/mysql
+      - db-volume:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB} -h localhost"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -48,5 +47,5 @@ services:
 
 volumes:
   db-volume:
-    name: abrigo-caes-db-volume
+    name: abrigo-animais-db-volume
     external: true

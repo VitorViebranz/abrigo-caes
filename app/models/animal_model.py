@@ -10,7 +10,7 @@ if TYPE_CHECKING:
     from .vaccine_model import VaccineModel
 
 
-class DogSize(str, enum.Enum):
+class AnimalSize(str, enum.Enum):
     P = "P"
     M = "M"
     G = "G"
@@ -22,13 +22,19 @@ class AdoptionStatus(str, enum.Enum):
     adotado = "adotado"
 
 
-class DogModel(BaseModel):
-    __tablename__ = "dogs"
+class AnimalType(str, enum.Enum):
+    dog = "dog"
+    cat = "cat"
+
+
+class AnimalModel(BaseModel):
+    __tablename__ = "animals"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String(100), nullable=False)
     estimated_age = Column(Float, nullable=False)
-    size = Column(Enum(DogSize), nullable=False)
+    size = Column(Enum(AnimalSize), nullable=False)
+    species = Column(Enum(AnimalType), nullable=False)
     adoption_status = Column(
         Enum(AdoptionStatus),
         nullable=False,
@@ -40,8 +46,9 @@ class DogModel(BaseModel):
 
     neutered = Column(Boolean, default=False, nullable=False)
     dewormed = Column(Boolean, default=False, nullable=False)
-    socializes_with_other_dogs = Column(Boolean, default=False, nullable=False)
+    socializes_with_other_animals = Column(Boolean, default=False, nullable=False)
     color = Column(String(50), nullable=True)
+    microchipped = Column(Boolean, default=False, nullable=False)
 
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(
@@ -51,5 +58,5 @@ class DogModel(BaseModel):
     )
 
     vaccines: Mapped[list["VaccineModel"]] = relationship(
-        "VaccineModel", back_populates="dog", cascade="all, delete-orphan"
+        "VaccineModel", back_populates="animal", cascade="all, delete-orphan"
     )

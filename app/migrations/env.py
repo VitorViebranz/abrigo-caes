@@ -16,14 +16,14 @@ load_dotenv()
 
 if "pytest" not in sys.modules:
     environ["ALEMBIC_RUNNING"] = "True"
-    db_username = getenv("MYSQL_USER")
-    db_password = getenv("MYSQL_PASSWORD")
-    db_host = getenv("MYSQL_SERVER")
-    db_database = getenv("MYSQL_DATABASE")
+    db_username = getenv("POSTGRES_USER")
+    db_password = getenv("POSTGRES_PASSWORD")
+    db_host = getenv("POSTGRES_SERVER")
+    db_database = getenv("POSTGRES_DB")
     db_password_encoded = quote_plus(db_password)
 
     db_url = (
-        f"mysql+pymysql://{db_username}:"
+        f"postgresql+psycopg2://{db_username}:"
         f"{db_password_encoded.replace('%', '%%')}"
         f"@{db_host}/{db_database}"
     )

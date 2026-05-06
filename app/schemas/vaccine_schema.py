@@ -3,7 +3,7 @@ from pydantic import BaseModel, ConfigDict, model_validator
 
 
 class VaccineCreateRequest(BaseModel):
-    dog_id: int
+    animal_id: int
     name: str
     application_date: date
     next_dose: date | None = None
@@ -25,7 +25,7 @@ class VaccineUpdateRequest(BaseModel):
 
 class VaccineResponse(BaseModel):
     id: int
-    dog_id: int
+    animal_id: int
     name: str
     application_date: date
     next_dose: date | None
@@ -38,8 +38,8 @@ class VaccineResponse(BaseModel):
 
 class VaccineAlertResponse(BaseModel):
     id: int
-    dog_id: int
-    dog_name: str
+    animal_id: int
+    animal_name: str
     name: str
     next_dose: date
     status: str

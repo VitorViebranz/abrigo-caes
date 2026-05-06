@@ -33,11 +33,7 @@ class UserResponse(BaseModel):
     full_name: str
     email: str
     is_active: bool
-    role: str # O campo continua sendo string na resposta da API
-    
-    # Se você tiver esses campos:
-    # token: Optional[str] = None
-    # created_at: datetime
+    role: str 
 
     model_config = ConfigDict(from_attributes=True)
 

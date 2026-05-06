@@ -1,7 +1,7 @@
 from datetime import date
 from sqlalchemy import select, extract
 from models import FinancialModel, FinancialType
-from configs import MySQLConnection
+from configs import PostgresConnection
 
 
 class FinancialDAO:
@@ -10,20 +10,20 @@ class FinancialDAO:
         pass
 
     def get_all(self, include_inactive: bool = False) -> list[FinancialModel]:
-        with MySQLConnection() as session:
+        with PostgresConnection() as session:
             stmt = select(FinancialModel)
             if not include_inactive:
                 stmt = stmt.where(FinancialModel.is_active == True)
             return session.execute(stmt.order_by(FinancialModel.date.desc())).scalars().all()
 
     def get_by_id(self, record_id: int) -> FinancialModel | None:
-        with MySQLConnection() as session:
+        with PostgresConnection() as session:
             return session.execute(
                 select(FinancialModel).where(FinancialModel.id == record_id)
             ).scalar_one_or_none()
 
     def get_by_month(self, year: int, month: int) -> list[FinancialModel]:
-        with MySQLConnection() as session:
+        with PostgresConnection() as session:
             return session.execute(
                 select(FinancialModel).where(
                     FinancialModel.is_active == True,
@@ -34,14 +34,14 @@ class FinancialDAO:
 
     def create(self, **kwargs) -> FinancialModel:
         record = FinancialModel(**kwargs)
-        with MySQLConnection() as session:
+        with PostgresConnection() as session:
             session.add(record)
             session.flush()
             session.refresh(record)
             return record
 
     def deactivate(self, record_id: int) -> bool:
-        with MySQLConnection() as session:
+        with PostgresConnection() as session:
             record = session.execute(
                 select(FinancialModel).where(FinancialModel.id == record_id)
             ).scalar_one_or_none()

@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 from sqlalchemy import Boolean, Column, Date, DateTime, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, relationship
 
-from models.dog_model import DogModel
+from models.animal_model import AnimalModel
 from .base_model import BaseModel
 
 
@@ -10,8 +10,8 @@ class VaccineModel(BaseModel):
     __tablename__ = "vaccines"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    dog_id = Column(
-        Integer, ForeignKey("dogs.id", ondelete="CASCADE"), nullable=False, index=True
+    animal_id = Column(
+        Integer, ForeignKey("animals.id", ondelete="CASCADE"), nullable=False, index=True
     )
     name = Column(String(100), nullable=False)
     application_date = Column(Date, nullable=False)
@@ -21,4 +21,4 @@ class VaccineModel(BaseModel):
     created_at = Column(
         DateTime, default=lambda: datetime.now(timezone.utc)
     )
-    dog: Mapped["DogModel"] = relationship("DogModel", back_populates="vaccines")
+    animal: Mapped["AnimalModel"] = relationship("AnimalModel", back_populates="vaccines")

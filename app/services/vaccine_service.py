@@ -1,6 +1,6 @@
 from fastapi import HTTPException, status
 
-from daos import DogDAO, VaccineDAO
+from daos import AnimalDAO, VaccineDAO
 from schemas import VaccineCreateRequest, VaccineUpdateRequest, VaccineResponse, VaccineAlertResponse
 
 
@@ -8,21 +8,21 @@ class VaccineService:
 
     def __init__(self):
         self._dao     = VaccineDAO()
-        self._dog_dao = DogDAO()
+        self._animal_dao = AnimalDAO()
 
-    def _get_dog_or_404(self, dog_id: int):
-        dog = self._dog_dao.get_by_id(dog_id)
-        if not dog or not dog.is_active:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Dog not found.")
-        return dog
+    def _get_animal_or_404(self, animal_id: int):
+        animal = self._animal_dao.get_by_id(animal_id)
+        if not animal or not animal.is_active:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Animal not found.")
+        return animal
 
-    def get_by_dog(self, dog_id: int) -> list[VaccineResponse]:
-        self._get_dog_or_404(dog_id)
-        vaccines = self._dao.get_by_dog(dog_id)
+    def get_by_animal(self, animal_id: int) -> list[VaccineResponse]:
+        self._get_animal_or_404(animal_id)
+        vaccines = self._dao.get_by_animal(animal_id)
         return [VaccineResponse.model_validate(v) for v in vaccines]
 
     def create(self, request: VaccineCreateRequest) -> VaccineResponse:
-        self._get_dog_or_404(request.dog_id)
+        self._get_animal_or_404(request.animal_id)
         vaccine = self._dao.create(**request.model_dump())
         return VaccineResponse.model_validate(vaccine)
 
@@ -55,11 +55,11 @@ class VaccineService:
     def _build_alerts(self, vaccines, status_label: str) -> list[VaccineAlertResponse]:
         alerts = []
         for v in vaccines:
-            dog = self._dog_dao.get_by_id(v.dog_id)
+            animal = self._animal_dao.get_by_id(v.animal_id)
             alerts.append(VaccineAlertResponse(
                 id=v.id,
-                dog_id=v.dog_id,
-                dog_name=dog.name if dog else "Unknown",
+                animal_id=v.animal_id,
+                animal_name=animal.name if animal else "Unknown",
                 name=v.name,
                 next_dose=v.next_dose,
                 status=status_label,

@@ -1,6 +1,6 @@
-# 🐾 Abrigo de Cães — API
+# 🐾 Abrigo de Animais — API
 
-Internal management system for a dog shelter, built with **FastAPI + MySQL + SQLAlchemy**.
+Internal management system for an animal shelter, built with **FastAPI + PostgreSQL + SQLAlchemy**.
 Access is restricted to authenticated internal users only — no public-facing endpoints.
 
 ---
@@ -10,7 +10,7 @@ Access is restricted to authenticated internal users only — no public-facing e
 | Layer      | Technology                   |
 |------------|------------------------------|
 | Framework  | FastAPI 0.111                |
-| Database   | MySQL 8.0+                   |
+| Database   | PostgreSQL 16+               |
 | ORM        | SQLAlchemy 2.0               |
 | Migrations | Alembic 1.13                 |
 | Auth       | JWT (python-jose) + BCrypt   |
@@ -25,40 +25,40 @@ Access is restricted to authenticated internal users only — no public-facing e
 /
 ├── app/
 │   ├── configs/
-│   │   ├── db_conn.py        # MySQLConnection — context manager + engine cache
+│   │   ├── db_conn.py        # PostgresConnection — context manager + engine cache
 │   │   ├── security.py       # JWT + role-based dependencies
 │   │   └── __init__.py
 │   │
 │   ├── models/
 │   │   ├── base_model.py     # SQLAlchemy declarative base
-│   │   ├── user.py           # users table (admin | voluntario | financeiro)
-│   │   ├── dog.py            # dogs table
-│   │   ├── vaccine.py        # vaccines table
-│   │   └── financial.py      # financial table
+│   │   ├── user_model.py     # users table (admin | voluntario | financeiro)
+│   │   ├── animal_model.py   # animals table
+│   │   ├── vaccine_model.py  # vaccines table
+│   │   └── financial_model.py # financial table
 │   │
 │   ├── daos/
 │   │   ├── user_dao.py
-│   │   ├── dog_dao.py
+│   │   ├── animal_dao.py
 │   │   ├── vaccine_dao.py    # includes get_overdue() and get_due_soon()
 │   │   └── financial_dao.py  # includes get_by_month() for reports
 │   │
 │   ├── schemas/
 │   │   ├── user_schema.py
-│   │   ├── dog_schema.py     # DogStatusUpdateRequest enforces transition rules
+│   │   ├── animal_schema.py  # AnimalStatusUpdateRequest enforces transition rules
 │   │   ├── vaccine_schema.py # validates next_dose > application_date
 │   │   └── financial_schema.py
 │   │
 │   ├── services/
 │   │   ├── auth_service.py   # embeds role in JWT payload
 │   │   ├── user_service.py
-│   │   ├── dog_service.py    # enforces adoption status transition rules
+│   │   ├── animal_service.py # enforces adoption status transition rules
 │   │   ├── vaccine_service.py
 │   │   └── financial_service.py  # monthly report + deactivation only
 │   │
 │   ├── routes/
 │   │   ├── auth.py
 │   │   ├── users.py
-│   │   ├── dogs.py
+│   │   ├── animals_route.py
 │   │   ├── vaccines.py
 │   │   └── financial.py
 │   │
@@ -86,7 +86,7 @@ Access is restricted to authenticated internal users only — no public-facing e
 
 The user's role is embedded in the JWT at login — no database round-trip needed per request.
 
-| Role         | Dogs | Vaccines | Financial | Users | Delete |
+| Role         | Animals | Vaccines | Financial | Users | Delete |
 |--------------|:----:|:--------:|:---------:|:-----:|:------:|
 | `admin`      | ✅   | ✅       | ✅        | ✅    | ✅     |
 | `voluntario` | ✅   | ✅       | ❌        | ❌    | ❌     |
@@ -96,13 +96,15 @@ The user's role is embedded in the JWT at login — no database round-trip neede
 
 ## 📋 Business Rules
 
-**Dogs:**
+**Animals:**
 - Status transitions are strictly enforced:
   ```
   disponivel → em_processo → adotado
   em_processo → disponivel  (if adoption falls through)
   ```
-  A dog cannot be marked as `adotado` without going through `em_processo` first.
+  An animal cannot be marked as `adotado` without going through `em_processo` first.
+
+- `microchipped` indicates whether the animal has a microchip.
 
 **Vaccines:**
 - `next_dose` is mandatory — vaccines must always have a due date.
@@ -137,11 +139,10 @@ cp .env.example .env
 ```
 
 ```env
-MYSQL_USER=abrigo_user
-MYSQL_PASSWORD=your_password
-MYSQL_SERVER=db:3306          # Use 'localhost:3306' for local dev
-MYSQL_DATABASE=abrigo_caes
-MYSQL_ROOT_PASSWORD=root_secret
+POSTGRES_USER=abrigo_user
+POSTGRES_PASSWORD=your_password
+POSTGRES_SERVER=db:5432          # Use 'localhost:5432' for local dev
+POSTGRES_DB=abrigo_animais
 
 JWT_SECRET_KEY=generate_with_python_secrets
 JWT_ALGORITHM=HS256
@@ -184,7 +185,7 @@ uvicorn app.main:app --reload --port 8000
 
 ```bash
 # Create the external volume (first time only)
-docker volume create abrigo-caes-db-volume
+docker volume create abrigo-animais-db-volume
 
 # Build and start
 docker compose up -d --build
@@ -211,22 +212,22 @@ docker compose exec api python seed.py
 | PATCH  | `/users/{id}/deactivate`     | Deactivate user      |
 | PATCH  | `/users/{id}/activate`       | Reactivate user      |
 
-### Dogs — admin + voluntario
+### Animals — admin + voluntario
 | Method | Route                 | Description                              |
 |--------|-----------------------|------------------------------------------|
-| GET    | `/dogs`               | List all active dogs                     |
-| GET    | `/dogs/{id}`          | Get dog by ID                            |
-| POST   | `/dogs`               | Register new dog                         |
-| PATCH  | `/dogs/{id}`          | Update dog details                       |
-| PATCH  | `/dogs/{id}/status`   | Update adoption status (rules enforced)  |
-| DELETE | `/dogs/{id}`          | Deactivate dog (admin only)              |
+| GET    | `/animals`               | List all active animals                     |
+| GET    | `/animals/{id}`          | Get animal by ID                            |
+| POST   | `/animals`               | Register new animal                         |
+| PATCH  | `/animals/{id}`          | Update animal details                       |
+| PATCH  | `/animals/{id}/status`   | Update adoption status (rules enforced)     |
+| DELETE | `/animals/{id}`          | Deactivate animal (admin only)              |
 
 ### Vaccines — admin + voluntario
 | Method | Route                          | Description                  |
 |--------|--------------------------------|------------------------------|
 | GET    | `/vaccines/alerts/overdue`     | List overdue vaccines        |
 | GET    | `/vaccines/alerts/due-soon`    | List vaccines due soon       |
-| GET    | `/vaccines/dog/{dog_id}`       | List vaccines for a dog      |
+| GET    | `/vaccines/animal/{animal_id}` | List vaccines for an animal  |
 | POST   | `/vaccines`                    | Register vaccine             |
 | PATCH  | `/vaccines/{id}`               | Update vaccine record        |
 
@@ -257,5 +258,5 @@ docker compose exec api python seed.py
 - [ ] Automatic vaccine notifications (email/push)
 - [ ] Dashboard with charts (adoptions, financial balance)
 - [ ] Adopter registration linked to adoption history
-- [ ] Dog photo upload (S3 or local storage)
+- [ ] Animal photo upload (S3 or local storage)
 - [ ] Production deploy — Gunicorn + Nginx + HTTPS

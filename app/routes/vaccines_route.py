@@ -8,7 +8,7 @@ from services import VaccineService
 vaccines_router = APIRouter(
     prefix="/vaccines",
     tags=["Vaccines"],
-    dependencies=[Depends(PermissionChecker("manage_dogs"))],
+    dependencies=[Depends(PermissionChecker("manage_animals"))],
 )
 
 @vaccines_router.get(
@@ -34,17 +34,17 @@ def get_due_soon_vaccines(
     return service.get_due_soon_alerts(days=days)
 
 @vaccines_router.get(
-    "/dog/{dog_id}",
+    "/animal/{animal_id}",
     response_model=list[VaccineResponse],
-    summary="[VOLUNTEER/ADMIN] List all vaccines for a dog",
+    summary="[VOLUNTEER/ADMIN] List all vaccines for an animal",
 )
 @route_logger
-def get_vaccines_by_dog(
+def get_vaccines_by_animal(
     request: Request,
-    dog_id: int,
+    animal_id: int,
     service: VaccineService = Depends(VaccineService),
 ):
-    return service.get_by_dog(dog_id)
+    return service.get_by_animal(animal_id)
 
 @vaccines_router.post(
     "",

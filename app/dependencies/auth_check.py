@@ -1,6 +1,6 @@
 from fastapi import Depends, HTTPException, status
 from configs.security import verify_token
-from configs import MySQLConnection
+from configs import PostgresConnection
 from models import PermissionModel, RoleModel
 from sqlalchemy import select
 
@@ -9,7 +9,7 @@ def get_user_permissions(current_user = Depends(verify_token)) -> list[str]:
     if not current_user or not getattr(current_user, "role_id", None):
         return []
 
-    with MySQLConnection() as session:
+    with PostgresConnection() as session:
         stmt = select(RoleModel).where(RoleModel.id == current_user.role_id)
         role = session.execute(stmt).unique().scalar_one_or_none()
         if not role:
@@ -28,7 +28,7 @@ class PermissionChecker:
         if not getattr(current_user, "role_id", None):
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied.")
 
-        with MySQLConnection() as session:
+        with PostgresConnection() as session:
             stmt = select(RoleModel).where(RoleModel.id == current_user.role_id)
             role = session.execute(stmt).unique().scalar_one_or_none()
             

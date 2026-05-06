@@ -1,10 +1,10 @@
 from sqlalchemy import insert
 from models import SystemLog
-from configs.db_conn import MySQLConnection
+from configs.db_conn import PostgresConnection
 
 class LogDAO:
     def create(self, **kwargs) -> None:
         stmt = insert(SystemLog).values(**kwargs)
         
-        with MySQLConnection() as session:
+        with PostgresConnection() as session:
             session.execute(stmt)
