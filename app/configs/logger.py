@@ -27,6 +27,6 @@ logger.remove()
 
 logger.add(sys.stdout, format=custom_format, level="INFO")
 
-logger.add(database_sink, level="INFO")
+logger.add(database_sink, level="INFO", enqueue=True)
 
 custom_log = logger

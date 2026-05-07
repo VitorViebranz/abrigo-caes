@@ -1,4 +1,6 @@
-from fastapi import APIRouter, Depends, Request
+import json
+
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile, status
 
 from configs.decorators import route_logger
 from configs.security import verify_token
@@ -48,11 +50,55 @@ def get_animal(
 @route_logger
 def create_animal(
     request: Request,
-    animal_create: AnimalCreateRequest,
+    name: str = Form(...),
+    estimated_age: float = Form(...),
+    size: str = Form(...),
+    species: str = Form(...),
+    entry_date: str = Form(...),
+    notes: str | None = Form(None),
+    neutered: bool = Form(False),
+    dewormed: bool = Form(False),
+    socializes_with_other_animals: bool = Form(False),
+    color: str | None = Form(None),
+    microchipped: bool = Form(False),
+    vaccines: str | None = Form(None),
+    image: UploadFile | None = File(None),
     service: AnimalService = Depends(AnimalService),
     current_user: dict = Depends(PermissionChecker("manage_animals"))
 ):
-    return service.create(animal_create)
+    vaccine_items: list[dict] = []
+    if vaccines:
+        try:
+            parsed = json.loads(vaccines)
+            if isinstance(parsed, list):
+                vaccine_items = parsed
+            else:
+                raise ValueError("vaccines must be a list")
+        except (ValueError, json.JSONDecodeError) as exc:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=f"Invalid vaccines payload: {exc}",
+            )
+
+    animal_create = AnimalCreateRequest.model_validate({
+        "name": name,
+        "estimated_age": estimated_age,
+        "size": size,
+        "species": species,
+        "entry_date": entry_date,
+        "notes": notes,
+        "neutered": neutered,
+        "dewormed": dewormed,
+        "socializes_with_other_animals": socializes_with_other_animals,
+        "color": color,
+        "microchipped": microchipped,
+        "vaccines": vaccine_items,
+    })
+
+    animal = service.create(animal_create)
+    if image:
+        return service.set_image(animal.id, image)
+    return animal
 
 
 @animals_router.patch(
@@ -97,3 +143,19 @@ def deactivate_animal(
     current_user: dict = Depends(PermissionChecker("manage_animals"))
 ):
     return service.deactivate(animal_id)
+
+
+@animals_router.post(
+    "/{animal_id}/image",
+    response_model=AnimalResponse,
+    summary="[FUNCIONARIO/ADMIN] Upload or replace animal image",
+)
+@route_logger
+def upload_animal_image(
+    request: Request,
+    animal_id: int,
+    image: UploadFile = File(...),
+    service: AnimalService = Depends(AnimalService),
+    current_user: dict = Depends(PermissionChecker("manage_animals")),
+):
+    return service.set_image(animal_id, image)

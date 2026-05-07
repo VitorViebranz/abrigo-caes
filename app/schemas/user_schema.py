@@ -1,5 +1,4 @@
-from datetime import datetime
-from alembic.environment import Any
+from typing import Any
 from pydantic import BaseModel, ConfigDict, EmailStr, field_validator
 
 
@@ -21,11 +20,13 @@ class UserCreateRequest(BaseModel):
     email: EmailStr
     password: str
     role: str = "voluntario"
+    permissions: list[str] | None = None
 
 
 class UserUpdateRequest(BaseModel):
     full_name: str | None = None
     role: str | None = None
+    permissions: list[str] | None = None
 
 
 class UserResponse(BaseModel):
@@ -34,6 +35,7 @@ class UserResponse(BaseModel):
     email: str
     is_active: bool
     role: str 
+    permissions: list[str] = []
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -43,3 +45,15 @@ class UserResponse(BaseModel):
         if hasattr(v, "name"):
             return v.name
         return v
+
+    @field_validator("permissions", mode="before")
+    @classmethod
+    def extract_permissions(cls, v: Any, info):
+        if v is not None:
+            return v
+        role = None
+        if hasattr(info, "data") and isinstance(info.data, dict):
+            role = info.data.get("role")
+        if role and hasattr(role, "permissions"):
+            return [p.name for p in role.permissions]
+        return []

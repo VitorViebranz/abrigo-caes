@@ -49,6 +49,7 @@ class AnimalModel(BaseModel):
     socializes_with_other_animals = Column(Boolean, default=False, nullable=False)
     color = Column(String(50), nullable=True)
     microchipped = Column(Boolean, default=False, nullable=False)
+    image_path = Column(String(255), nullable=True)
 
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(

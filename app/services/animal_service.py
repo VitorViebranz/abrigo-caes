@@ -1,4 +1,7 @@
-from fastapi import HTTPException, status
+from pathlib import Path
+from uuid import uuid4
+
+from fastapi import HTTPException, UploadFile, status
 from daos import AnimalDAO
 from models import AdoptionStatus, AnimalModel
 from schemas import AnimalCreateRequest, AnimalUpdateRequest, AnimalStatusUpdateRequest, AnimalResponse
@@ -13,6 +16,8 @@ ALLOWED_TRANSITIONS: dict[AdoptionStatus, list[AdoptionStatus]] = {
 class AnimalService:
     def __init__(self):
         self._dao = AnimalDAO()
+
+        self._image_root = Path("assets") / "img" / "animals"
 
     def _to_response(self, animal: AnimalModel) -> AnimalResponse:
         return AnimalResponse.model_validate(animal)
@@ -69,3 +74,27 @@ class AnimalService:
         if not animal:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Animal not found.")
         return {"message": "Animal deactivated. Animals are never permanently deleted."}
+
+    def set_image(self, animal_id: int, file: UploadFile) -> AnimalResponse:
+        animal = self._dao.get_by_id(animal_id)
+        if not animal:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Animal not found.")
+
+        if not file.content_type or not file.content_type.startswith("image/"):
+            raise HTTPException(status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE, detail="Invalid image file.")
+
+        extension = Path(file.filename or "").suffix.lower() or ".png"
+        file_name = f"{uuid4().hex}{extension}"
+
+        target_dir = self._image_root / str(animal_id)
+        target_dir.mkdir(parents=True, exist_ok=True)
+        target_path = target_dir / file_name
+
+        with target_path.open("wb") as output:
+            output.write(file.file.read())
+
+        relative_path = str(Path("assets") / "img" / "animals" / str(animal_id) / file_name)
+        self._dao.update_image_path(animal_id, relative_path)
+
+        animal = self._dao.get_by_id(animal_id)
+        return self._to_response(animal)

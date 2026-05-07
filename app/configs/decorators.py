@@ -1,4 +1,5 @@
 from functools import wraps
+import time
 from fastapi import HTTPException, Request
 from inspect import signature, iscoroutinefunction
 from pydantic import ValidationError
@@ -28,23 +29,33 @@ def route_logger(handler):
         @wraps(handler)
         async def async_wrapper(*args, **kwargs):
             request = _extract_request(handler, args, kwargs)
-
-            if request:
-                logger.info(
-                    f"[{request.method} {request.url.path}] Requisição recebida | IP: {request.client.host}"
-                )
+            log = logger.bind(
+                route=request.url.path if request else None,
+                method=request.method if request else None,
+            )
+            start = time.perf_counter()
 
             try:
-                return await handler(*args, **kwargs)
+                response = await handler(*args, **kwargs)
+                status_code = getattr(response, "status_code", 200)
+                duration_ms = (time.perf_counter() - start) * 1000
+                log.info(
+                    f"[{request.method} {request.url.path}] {status_code} em {duration_ms:.2f}ms"
+                    if request
+                    else f"Request finalizada {status_code} em {duration_ms:.2f}ms"
+                )
+                return response
             except HTTPException as http_exc:
-                logger.warning(
+                duration_ms = (time.perf_counter() - start) * 1000
+                log.warning(
                     f"[{request.url.path}] HTTPException capturada: {http_exc.detail}"
                     if request
                     else f"HTTPException capturada: {http_exc.detail}"
                 )
                 raise http_exc
             except ValidationError as val_err:
-                logger.error(
+                duration_ms = (time.perf_counter() - start) * 1000
+                log.error(
                     f"[{request.url.path}] Erro de validação Pydantic: {val_err.errors()}"
                     if request
                     else "Erro de validação Pydantic"
@@ -53,7 +64,8 @@ def route_logger(handler):
                     status_code=422, detail="Campo inválido ou não informado."
                 )
             except Exception:
-                logger.exception(
+                duration_ms = (time.perf_counter() - start) * 1000
+                log.exception(
                     f"[{request.url.path}] Erro inesperado na rota"
                     if request
                     else "Erro inesperado na rota"
@@ -65,23 +77,33 @@ def route_logger(handler):
     @wraps(handler)
     def sync_wrapper(*args, **kwargs):
         request = _extract_request(handler, args, kwargs)
-
-        if request:
-            logger.info(
-                f"[{request.method} {request.url.path}] Requisição recebida | IP: {request.client.host}"
-            )
+        log = logger.bind(
+            route=request.url.path if request else None,
+            method=request.method if request else None,
+        )
+        start = time.perf_counter()
 
         try:
-            return handler(*args, **kwargs)
+            response = handler(*args, **kwargs)
+            status_code = getattr(response, "status_code", 200)
+            duration_ms = (time.perf_counter() - start) * 1000
+            log.info(
+                f"[{request.method} {request.url.path}] {status_code} em {duration_ms:.2f}ms"
+                if request
+                else f"Request finalizada {status_code} em {duration_ms:.2f}ms"
+            )
+            return response
         except HTTPException as http_exc:
-            logger.warning(
+            duration_ms = (time.perf_counter() - start) * 1000
+            log.warning(
                 f"[{request.url.path}] HTTPException capturada: {http_exc.detail}"
                 if request
                 else f"HTTPException capturada: {http_exc.detail}"
             )
             raise http_exc
         except ValidationError as val_err:
-            logger.error(
+            duration_ms = (time.perf_counter() - start) * 1000
+            log.error(
                 f"[{request.url.path}] Erro de validação Pydantic: {val_err.errors()}"
                 if request
                 else "Erro de validação Pydantic"
@@ -90,17 +112,12 @@ def route_logger(handler):
                 status_code=422, detail="Campo inválido ou não informado."
             )
         except Exception:
-            logger.exception(
+            duration_ms = (time.perf_counter() - start) * 1000
+            log.exception(
                 f"[{request.url.path}] Erro inesperado na rota"
                 if request
                 else "Erro inesperado na rota"
             )
             raise HTTPException(status_code=500, detail="Erro interno no servidor")
-        finally:
-            logger.info(
-                f"[{request.method} {request.url.path}] Requisição finalizada | IP: {request.client.host}"
-                if request
-                else "Requisição finalizada"
-            )
 
     return sync_wrapper

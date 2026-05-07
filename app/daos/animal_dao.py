@@ -62,6 +62,15 @@ class AnimalDAO:
             )
             session.execute(stmt_update)
 
+    def update_image_path(self, animal_id: int, image_path: str | None) -> bool:
+        with PostgresConnection() as session:
+            result = session.execute(
+                update(AnimalModel)
+                .where(AnimalModel.id == animal_id)
+                .values(image_path=image_path)
+            )
+            return result.rowcount > 0
+
     def deactivate(self, animal_id: int) -> bool:
         with PostgresConnection() as session:
             stmt = (

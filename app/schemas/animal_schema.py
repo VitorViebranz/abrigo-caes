@@ -60,6 +60,7 @@ class AnimalResponse(BaseModel):
     socializes_with_other_animals: bool
     color: str | None
     microchipped: bool
+    image_path: str | None = None
     created_at: datetime
     updated_at: datetime | None = None
 

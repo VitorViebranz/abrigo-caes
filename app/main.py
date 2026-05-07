@@ -3,9 +3,10 @@ import os
 from uvicorn import run
 from dotenv import load_dotenv
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 
-from routes import auth_router, users_router, animals_router, vaccines_router, financial_router
+from routes import auth_router, users_router, roles_router, permissions_router, animals_router, vaccines_router, financial_router
 from middlewares.trace_middleware import TraceIDMiddleware
 
 load_dotenv()
@@ -30,8 +31,12 @@ app.add_middleware(
 
 app.add_middleware(TraceIDMiddleware)
 
+app.mount("/assets", StaticFiles(directory="assets"), name="assets")
+
 app.include_router(auth_router)
 app.include_router(users_router)
+app.include_router(roles_router)
+app.include_router(permissions_router)
 app.include_router(animals_router)
 app.include_router(vaccines_router)
 app.include_router(financial_router)
