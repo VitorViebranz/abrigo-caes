@@ -1,6 +1,8 @@
 from typing import Any
 from pydantic import BaseModel, ConfigDict, EmailStr, field_validator
 
+from .pagination_schema import PaginationInfo
+
 
 class LoginRequest(BaseModel):
     email: EmailStr
@@ -57,3 +59,8 @@ class UserResponse(BaseModel):
         if role and hasattr(role, "permissions"):
             return [p.name for p in role.permissions]
         return []
+
+
+class UserListResponse(BaseModel):
+    data: list[UserResponse]
+    pagination: PaginationInfo

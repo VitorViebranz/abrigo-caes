@@ -6,6 +6,7 @@ from fastapi import Form, HTTPException, status
 from pydantic import BaseModel, ConfigDict, Field
 from models import AdoptionStatus, AnimalSize, AnimalType
 from .vaccine_schema import VaccineResponse
+from .pagination_schema import PaginationInfo
 
 
 class AnimalVaccineCreateRequest(BaseModel):
@@ -144,3 +145,8 @@ class AnimalResponse(BaseModel):
     updated_at: datetime | None = None
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class AnimalListResponse(BaseModel):
+    data: list[AnimalResponse]
+    pagination: PaginationInfo

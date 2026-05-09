@@ -4,7 +4,14 @@ from uuid import uuid4
 from fastapi import HTTPException, UploadFile, status
 from daos import AnimalDAO
 from models import AdoptionStatus, AnimalModel
-from schemas import AnimalCreateRequest, AnimalUpdateRequest, AnimalStatusUpdateRequest, AnimalResponse
+from schemas import (
+    AnimalCreateRequest,
+    AnimalUpdateRequest,
+    AnimalStatusUpdateRequest,
+    AnimalResponse,
+    AnimalListResponse,
+    PaginationInfo,
+)
 
 ALLOWED_TRANSITIONS: dict[AdoptionStatus, list[AdoptionStatus]] = {
     AdoptionStatus.disponivel:  [AdoptionStatus.em_processo],
@@ -22,9 +29,24 @@ class AnimalService:
     def _to_response(self, animal: AnimalModel) -> AnimalResponse:
         return AnimalResponse.model_validate(animal)
 
-    def get_all(self, include_inactive: bool = False) -> list[AnimalResponse]:
-        animals = self._dao.get_all(include_inactive=include_inactive)
-        return [self._to_response(a) for a in animals]
+    def get_all(
+        self,
+        include_inactive: bool,
+        offset: int,
+        limit: int,
+        max_allowed_per_page: int,
+    ) -> AnimalListResponse:
+        animals, total = self._dao.get_page(include_inactive=include_inactive, offset=offset, limit=limit)
+        return AnimalListResponse(
+            data=[self._to_response(a) for a in animals],
+            pagination=PaginationInfo(
+                actual_page=(offset // limit) + 1,
+                per_page=limit,
+                max_allowed_per_page=max_allowed_per_page,
+                total_items=total,
+                total_pages=(total + limit - 1) // limit,
+            ),
+        )
 
     def get_by_id(self, animal_id: int) -> AnimalResponse:
         animal = self._dao.get_by_id(animal_id)

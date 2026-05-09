@@ -1,6 +1,6 @@
 import datetime
 
-from sqlalchemy import insert, select, update
+from sqlalchemy import func, insert, select, update
 from models import UserModel as User
 from configs import PostgresConnection
 
@@ -10,10 +10,14 @@ class UserDAO:
     def __init__(self):
         pass
 
-    def get_all(self) -> list[User]:
+    def get_page(self, offset: int, limit: int) -> tuple[list[User], int]:
         with PostgresConnection() as session:
-            stmt = select(User)
-            return session.execute(stmt).unique().scalars().all()
+            count_stmt = select(func.count()).select_from(User)
+            data_stmt = select(User).order_by(User.id).offset(offset).limit(limit)
+
+            total = session.execute(count_stmt).scalar_one()
+            items = session.execute(data_stmt).unique().scalars().all()
+            return items, total
 
     def get_by_email(self, email: str) -> User | None:
         with PostgresConnection() as session:

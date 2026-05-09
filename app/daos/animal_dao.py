@@ -1,4 +1,4 @@
-from sqlalchemy import insert, select, update
+from sqlalchemy import func, insert, select, update
 from sqlalchemy.orm import selectinload
 from configs import PostgresConnection
 
@@ -12,12 +12,29 @@ class AnimalDAO:
     def __init__(self):
         self._vaccine_dao = VaccineDAO()
 
-    def get_all(self, include_inactive: bool = False) -> list[AnimalModel]:
+    def get_page(self, include_inactive: bool, offset: int, limit: int) -> tuple[list[AnimalModel], int]:
         with PostgresConnection() as session:
-            stmt = select(AnimalModel).options(selectinload(AnimalModel.vaccines))
+            filters = []
             if not include_inactive:
-                stmt = stmt.where(AnimalModel.is_active == True)
-            return session.execute(stmt).scalars().all()
+                filters.append(AnimalModel.is_active == True)
+
+            count_stmt = select(func.count()).select_from(AnimalModel)
+            if filters:
+                count_stmt = count_stmt.where(*filters)
+
+            data_stmt = (
+                select(AnimalModel)
+                .options(selectinload(AnimalModel.vaccines))
+                .order_by(AnimalModel.id)
+                .offset(offset)
+                .limit(limit)
+            )
+            if filters:
+                data_stmt = data_stmt.where(*filters)
+
+            total = session.execute(count_stmt).scalar_one()
+            items = session.execute(data_stmt).scalars().all()
+            return items, total
 
     def get_by_id(self, animal_id: int) -> AnimalModel | None:
         with PostgresConnection() as session:
