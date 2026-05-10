@@ -5,3 +5,5 @@ from .permissions_route import permissions_router
 from .animals_route import animals_router
 from .vaccines_route import vaccines_router
 from .financial_route import financial_router
+from .inventory_route import inventory_router
+from .donations_route import donations_router

@@ -10,5 +10,15 @@ from .animal_schema import (
 )
 from .vaccine_schema import VaccineCreateRequest, VaccineUpdateRequest, VaccineResponse, VaccineAlertResponse
 from .financial_schema import FinancialCreateRequest, FinancialResponse, MonthlyReportResponse
+from .inventory_schema import (
+	InventoryItemCreateRequest,
+	InventoryItemUpdateRequest,
+	InventoryItemResponse,
+	InventoryItemListResponse,
+	InventoryMovementCreateRequest,
+	InventoryMovementResponse,
+	StockBalanceResponse,
+)
+from .donation_schema import DonationCreateRequest, DonationResponse
 from .permission_schema import PermissionCreateRequest, PermissionResponse
 from .role_schema import RoleCreateRequest, RoleUpdateRequest, RoleResponse

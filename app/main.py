@@ -6,7 +6,17 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 
-from routes import auth_router, users_router, roles_router, permissions_router, animals_router, vaccines_router, financial_router
+from routes import (
+    auth_router,
+    users_router,
+    roles_router,
+    permissions_router,
+    animals_router,
+    vaccines_router,
+    financial_router,
+    inventory_router,
+    donations_router,
+)
 from middlewares.trace_middleware import TraceIDMiddleware
 
 load_dotenv()
@@ -40,6 +50,8 @@ app.include_router(permissions_router)
 app.include_router(animals_router)
 app.include_router(vaccines_router)
 app.include_router(financial_router)
+app.include_router(inventory_router)
+app.include_router(donations_router)
 
 
 @app.get("/status", tags=["Status"])
