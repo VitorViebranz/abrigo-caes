@@ -18,6 +18,7 @@ __pycache__/
 
 # User uploads (images sent by admins)
 uploads/
+app/assets/img/animals/
 
 # Logs
 *.log

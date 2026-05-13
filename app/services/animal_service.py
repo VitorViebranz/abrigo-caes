@@ -25,7 +25,7 @@ class AnimalService:
     def __init__(self):
         self._dao = AnimalDAO()
 
-        self._image_root = Path("assets") / "img" / "animals"
+        self._image_root = Path(__file__).resolve().parent / "assets" / "img" / "animals"
 
     def _to_response(self, animal: AnimalModel) -> AnimalResponse:
         return AnimalResponse.model_validate(animal)
@@ -119,7 +119,7 @@ class AnimalService:
         with target_path.open("wb") as output:
             output.write(file.file.read())
 
-        relative_path = str(Path("assets") / "img" / "animals" / str(animal_id) / file_name)
+        relative_path = str(Path("app") / "assets" / "img" / "animals" / str(animal_id) / file_name)
         self._dao.update_image_path(animal_id, relative_path)
 
         animal = self._dao.get_by_id(animal_id)
