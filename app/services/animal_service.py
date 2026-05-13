@@ -3,6 +3,7 @@ from uuid import uuid4
 
 from fastapi import HTTPException, UploadFile, status
 from daos import AnimalDAO
+from configs.pagination import MAX_PAGE_SIZE
 from models import AdoptionStatus, AnimalModel
 from schemas import (
     AnimalCreateRequest,
@@ -32,19 +33,22 @@ class AnimalService:
     def get_all(
         self,
         include_inactive: bool,
-        offset: int,
-        limit: int,
-        max_allowed_per_page: int,
+        page: int,
+        page_size: int,
     ) -> AnimalListResponse:
-        animals, total = self._dao.get_page(include_inactive=include_inactive, offset=offset, limit=limit)
+        effective_page_size = min(page_size, MAX_PAGE_SIZE)
+        animals, total = self._dao.get_page(
+            include_inactive=include_inactive,
+            page=page,
+            page_size=effective_page_size,
+        )
         return AnimalListResponse(
             data=[self._to_response(a) for a in animals],
             pagination=PaginationInfo(
-                actual_page=(offset // limit) + 1,
-                per_page=limit,
-                max_allowed_per_page=max_allowed_per_page,
-                total_items=total,
-                total_pages=(total + limit - 1) // limit,
+                actual_page=page,
+                page_size=effective_page_size,
+                total_records=total,
+                total_pages=(total + effective_page_size - 1) // effective_page_size,
             ),
         )
 

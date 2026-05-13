@@ -1,6 +1,7 @@
 from fastapi import HTTPException, status
 
 from daos import InventoryItemDAO, InventoryMovementDAO
+from configs.pagination import MAX_PAGE_SIZE
 from schemas import (
     InventoryItemCreateRequest,
     InventoryItemUpdateRequest,
@@ -22,19 +23,22 @@ class InventoryService:
     def get_items(
         self,
         include_inactive: bool,
-        offset: int,
-        limit: int,
-        max_allowed_per_page: int,
+        page: int,
+        page_size: int,
     ) -> InventoryItemListResponse:
-        items, total = self._item_dao.get_page(include_inactive=include_inactive, offset=offset, limit=limit)
+        effective_page_size = min(page_size, MAX_PAGE_SIZE)
+        items, total = self._item_dao.get_page(
+            include_inactive=include_inactive,
+            page=page,
+            page_size=effective_page_size,
+        )
         return InventoryItemListResponse(
             data=[InventoryItemResponse.model_validate(i) for i in items],
             pagination=PaginationInfo(
-                actual_page=(offset // limit) + 1,
-                per_page=limit,
-                max_allowed_per_page=max_allowed_per_page,
-                total_items=total,
-                total_pages=(total + limit - 1) // limit,
+                actual_page=page,
+                page_size=effective_page_size,
+                total_records=total,
+                total_pages=(total + effective_page_size - 1) // effective_page_size,
             ),
         )
 

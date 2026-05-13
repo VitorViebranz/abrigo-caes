@@ -1,8 +1,15 @@
-from fastapi import APIRouter, Depends, File, Query, Request, UploadFile, status
+from fastapi import APIRouter, Depends, File, Request, UploadFile, status
 
 from configs.decorators import route_logger
 from dependencies import PermissionChecker
-from schemas import AnimalCreateForm, AnimalUpdateRequest, AnimalStatusUpdateRequest, AnimalResponse, AnimalListResponse
+from schemas import (
+    AnimalCreateForm,
+    AnimalUpdateRequest,
+    AnimalStatusUpdateRequest,
+    AnimalResponse,
+    AnimalListResponse,
+    PaginationParams,
+)
 from services import AnimalService
 
 animals_router = APIRouter(prefix="/animals", tags=["Animals"])
@@ -17,18 +24,14 @@ animals_router = APIRouter(prefix="/animals", tags=["Animals"])
 def get_all_animals(
     request: Request,
     include_inactive: bool = False,
-    actual_page: int = Query(1, ge=1),
-    per_page: int = Query(10, ge=1, le=100),
+    pagination: PaginationParams = Depends(),
     service: AnimalService = Depends(AnimalService),
     current_user: dict = Depends(PermissionChecker("manage_animals"))
 ):
-    max_allowed_per_page = 100
-    offset = (actual_page - 1) * per_page
     return service.get_all(
         include_inactive=include_inactive,
-        offset=offset,
-        limit=per_page,
-        max_allowed_per_page=max_allowed_per_page,
+        page=pagination.page,
+        page_size=pagination.page_size,
     )
 
 

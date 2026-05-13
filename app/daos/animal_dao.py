@@ -12,8 +12,9 @@ class AnimalDAO:
     def __init__(self):
         self._vaccine_dao = VaccineDAO()
 
-    def get_page(self, include_inactive: bool, offset: int, limit: int) -> tuple[list[AnimalModel], int]:
+    def get_page(self, include_inactive: bool, page: int, page_size: int) -> tuple[list[AnimalModel], int]:
         with PostgresConnection() as session:
+            offset = (page - 1) * page_size
             filters = []
             if not include_inactive:
                 filters.append(AnimalModel.is_active == True)
@@ -27,7 +28,7 @@ class AnimalDAO:
                 .options(selectinload(AnimalModel.vaccines))
                 .order_by(AnimalModel.id)
                 .offset(offset)
-                .limit(limit)
+                .limit(page_size)
             )
             if filters:
                 data_stmt = data_stmt.where(*filters)

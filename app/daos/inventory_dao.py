@@ -9,8 +9,9 @@ from models import InventoryItemModel, InventoryMovementModel, InventoryMovement
 
 class InventoryItemDAO:
 
-    def get_page(self, include_inactive: bool, offset: int, limit: int) -> tuple[list[InventoryItemModel], int]:
+    def get_page(self, include_inactive: bool, page: int, page_size: int) -> tuple[list[InventoryItemModel], int]:
         with PostgresConnection() as session:
+            offset = (page - 1) * page_size
             filters = []
             if not include_inactive:
                 filters.append(InventoryItemModel.is_active == True)
@@ -23,7 +24,7 @@ class InventoryItemDAO:
                 select(InventoryItemModel)
                 .order_by(InventoryItemModel.name.asc())
                 .offset(offset)
-                .limit(limit)
+                .limit(page_size)
             )
             if filters:
                 data_stmt = data_stmt.where(*filters)

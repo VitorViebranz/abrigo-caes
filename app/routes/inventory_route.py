@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Query, Request
+from fastapi import APIRouter, Depends, Request
 
 from configs.decorators import route_logger
 from dependencies import PermissionChecker
@@ -10,6 +10,7 @@ from schemas import (
     InventoryMovementCreateRequest,
     InventoryMovementResponse,
     StockBalanceResponse,
+    PaginationParams,
 )
 from services import InventoryService
 
@@ -30,17 +31,13 @@ inventory_router = APIRouter(
 def list_items(
     request: Request,
     include_inactive: bool = False,
-    actual_page: int = Query(1, ge=1),
-    per_page: int = Query(10, ge=1, le=100),
+    pagination: PaginationParams = Depends(),
     service: InventoryService = Depends(InventoryService),
 ):
-    max_allowed_per_page = 100
-    offset = (actual_page - 1) * per_page
     return service.get_items(
         include_inactive=include_inactive,
-        offset=offset,
-        limit=per_page,
-        max_allowed_per_page=max_allowed_per_page,
+        page=pagination.page,
+        page_size=pagination.page_size,
     )
 
 

@@ -1,4 +1,4 @@
-from .pagination_schema import PaginationInfo
+from .pagination_schema import PaginationInfo, PaginationParams
 from .user_schema import LoginRequest, TokenResponse, UserCreateRequest, UserUpdateRequest, UserResponse, UserListResponse
 from .animal_schema import (
 	AnimalCreateForm,

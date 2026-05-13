@@ -1,8 +1,8 @@
-from fastapi import APIRouter, Depends, Query, Request
+from fastapi import APIRouter, Depends, Request
 
 from configs.decorators import route_logger
 from dependencies import PermissionChecker
-from schemas import UserCreateRequest, UserUpdateRequest, UserResponse, UserListResponse
+from schemas import UserCreateRequest, UserUpdateRequest, UserResponse, UserListResponse, PaginationParams
 from services import UserService
 
 users_router = APIRouter(
@@ -19,13 +19,10 @@ users_router = APIRouter(
 @route_logger
 def get_all_users(
     request: Request,
-    actual_page: int = Query(1, ge=1),
-    per_page: int = Query(10, ge=1, le=100),
+    pagination: PaginationParams = Depends(),
     service: UserService = Depends(UserService)
 ):
-    max_allowed_per_page = 100
-    offset = (actual_page - 1) * per_page
-    return service.get_all(offset=offset, limit=per_page, max_allowed_per_page=max_allowed_per_page)
+    return service.get_all(page=pagination.page, page_size=pagination.page_size)
 
 @users_router.get(
     "/{user_id}",

@@ -10,10 +10,11 @@ class UserDAO:
     def __init__(self):
         pass
 
-    def get_page(self, offset: int, limit: int) -> tuple[list[User], int]:
+    def get_page(self, page: int, page_size: int) -> tuple[list[User], int]:
         with PostgresConnection() as session:
+            offset = (page - 1) * page_size
             count_stmt = select(func.count()).select_from(User)
-            data_stmt = select(User).order_by(User.id).offset(offset).limit(limit)
+            data_stmt = select(User).order_by(User.id).offset(offset).limit(page_size)
 
             total = session.execute(count_stmt).scalar_one()
             items = session.execute(data_stmt).unique().scalars().all()

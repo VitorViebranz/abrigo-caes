@@ -1,6 +1,7 @@
 from fastapi import HTTPException, status
 
 from daos import UserDAO, RoleDAO, PermissionDAO
+from configs.pagination import MAX_PAGE_SIZE
 from schemas import UserCreateRequest, UserUpdateRequest, UserResponse, UserListResponse, PaginationInfo
 from utils import hash_password
 
@@ -12,16 +13,16 @@ class UserService:
         self._role_dao = RoleDAO()
         self._permission_dao = PermissionDAO()
 
-    def get_all(self, offset: int, limit: int, max_allowed_per_page: int) -> UserListResponse:
-        users, total = self._dao.get_page(offset=offset, limit=limit)
+    def get_all(self, page: int, page_size: int) -> UserListResponse:
+        effective_page_size = min(page_size, MAX_PAGE_SIZE)
+        users, total = self._dao.get_page(page=page, page_size=effective_page_size)
         return UserListResponse(
             data=[UserResponse.model_validate(u) for u in users],
             pagination=PaginationInfo(
-                actual_page=(offset // limit) + 1,
-                per_page=limit,
-                max_allowed_per_page=max_allowed_per_page,
-                total_items=total,
-                total_pages=(total + limit - 1) // limit,
+                actual_page=page,
+                page_size=effective_page_size,
+                total_records=total,
+                total_pages=(total + effective_page_size - 1) // effective_page_size,
             ),
         )
 
