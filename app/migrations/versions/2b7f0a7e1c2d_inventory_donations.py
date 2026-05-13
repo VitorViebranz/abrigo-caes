@@ -19,8 +19,21 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    inventory_movement_enum = sa.Enum("entrada", "saida", name="inventorymovementtype")
-    inventory_movement_enum.create(op.get_bind(), checkfirst=True)
+    # cria o enum apenas se não existir (protege contra "type already exists")
+    op.execute(
+        """
+        DO $$
+        BEGIN
+            IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'inventorymovementtype') THEN
+                CREATE TYPE inventorymovementtype AS ENUM ('entrada','saida');
+            END IF;
+        END$$;
+        """
+    )
+
+    inventory_movement_enum = sa.dialects.postgresql.ENUM(
+        "entrada", "saida", name="inventorymovementtype", create_type=False
+    )
 
     op.create_table(
         "inventory_items",
@@ -84,5 +97,14 @@ def downgrade() -> None:
     op.drop_table("inventory_movements")
     op.drop_table("inventory_items")
 
-    inventory_movement_enum = sa.Enum("entrada", "saida", name="inventorymovementtype")
-    inventory_movement_enum.drop(op.get_bind(), checkfirst=True)
+    # remove o enum somente se existir
+    op.execute(
+        """
+        DO $$
+        BEGIN
+            IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'inventorymovementtype') THEN
+                DROP TYPE inventorymovementtype;
+            END IF;
+        END$$;
+        """
+    )

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from sqlalchemy import case, func, select, update
 from sqlalchemy.orm import selectinload
 
