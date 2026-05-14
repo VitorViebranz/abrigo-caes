@@ -4,6 +4,9 @@ from dotenv import load_dotenv
 from jose import JWTError, jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from configs.db_conn import get_db
 
 load_dotenv()
 
@@ -20,7 +23,10 @@ def create_access_token(data: dict) -> str:
     return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
 
 
-def verify_token(token: str = Depends(oauth2_scheme)):
+async def verify_token(
+    token: str = Depends(oauth2_scheme),
+    db: AsyncSession = Depends(get_db),
+):
     from daos.user_dao import UserDAO
     
     exc = HTTPException(
@@ -32,8 +38,8 @@ def verify_token(token: str = Depends(oauth2_scheme)):
     try:
         jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
 
-        user_dao = UserDAO()
-        user = user_dao.get_by_token(token)
+        user_dao = UserDAO(db)
+        user = await user_dao.get_by_token(token)
 
         if not user or not user.is_active:
             raise HTTPException(
@@ -55,7 +61,7 @@ def verify_token(token: str = Depends(oauth2_scheme)):
 
 
 def _require_role(*allowed_roles: str):
-    def dependency(current_user = Depends(verify_token)):
+    async def dependency(current_user = Depends(verify_token)):
         role_name = getattr(current_user.role, "name", None) or getattr(current_user.role, "value", None) or current_user.role
         if role_name not in allowed_roles:
             raise HTTPException(

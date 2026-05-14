@@ -1,5 +1,7 @@
 from fastapi import APIRouter, Depends, File, Request, UploadFile, status
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from configs import get_db
 from configs.decorators import route_logger
 from dependencies import PermissionChecker
 from schemas import (
@@ -21,14 +23,15 @@ animals_router = APIRouter(prefix="/animals", tags=["Animals"])
     summary="List all active animals"
 )
 @route_logger
-def get_all_animals(
+async def get_all_animals(
     request: Request,
     include_inactive: bool = False,
     pagination: PaginationParams = Depends(),
-    service: AnimalService = Depends(AnimalService),
+    db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(PermissionChecker("manage_animals"))
 ):
-    return service.get_all(
+    service = AnimalService(db)
+    return await service.get_all(
         include_inactive=include_inactive,
         page=pagination.page,
         page_size=pagination.page_size,
@@ -41,13 +44,14 @@ def get_all_animals(
     summary="Get an animal by ID"
 )
 @route_logger
-def get_animal(
+async def get_animal(
     request: Request,
     animal_id: int,
-    service: AnimalService = Depends(AnimalService),
+    db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(PermissionChecker("manage_animals"))
 ):
-    return service.get_by_id(animal_id)
+    service = AnimalService(db)
+    return await service.get_by_id(animal_id)
 
 
 @animals_router.post(
@@ -57,16 +61,17 @@ def get_animal(
     summary="[FUNCIONARIO/ADMIN] Register a new animal"
 )
 @route_logger
-def create_animal(
+async def create_animal(
     request: Request,
     animal_form: AnimalCreateForm = Depends(AnimalCreateForm.as_form),
     image: UploadFile = File(...),
-    service: AnimalService = Depends(AnimalService),
+    db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(PermissionChecker("manage_animals"))
 ):
-    animal = service.create(animal_form.to_request())
+    service = AnimalService(db)
+    animal = await service.create(animal_form.to_request())
     if image:
-        return service.set_image(animal.id, image)
+        return await service.set_image(animal.id, image)
     return animal
 
 
@@ -75,14 +80,15 @@ def create_animal(
     summary="[FUNCIONARIO/ADMIN] Update animal details"
 )
 @route_logger
-def update_animal(
+async def update_animal(
     request: Request,
     animal_id: int,
     animal_update: AnimalUpdateRequest,
-    service: AnimalService = Depends(AnimalService),
+    db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(PermissionChecker("manage_animals"))
 ):
-    return service.update(animal_id, animal_update)
+    service = AnimalService(db)
+    return await service.update(animal_id, animal_update)
 
 
 @animals_router.patch(
@@ -90,14 +96,15 @@ def update_animal(
     summary="[FUNCIONARIO/ADMIN] Update adoption status (rules enforced)"
 )
 @route_logger
-def update_animal_status(
+async def update_animal_status(
     request: Request,
     animal_id: int,
     animal_status_update: AnimalStatusUpdateRequest,
-    service: AnimalService = Depends(AnimalService),
+    db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(PermissionChecker("manage_animals"))
 ):
-    return service.update_status(animal_id, animal_status_update)
+    service = AnimalService(db)
+    return await service.update_status(animal_id, animal_status_update)
 
 
 @animals_router.delete(
@@ -105,13 +112,14 @@ def update_animal_status(
     summary="[FUNCIONARIO/ADMIN] Deactivate an animal (soft delete)"
 )
 @route_logger
-def deactivate_animal(
+async def deactivate_animal(
     request: Request,
     animal_id: int,
-    service: AnimalService = Depends(AnimalService),
+    db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(PermissionChecker("manage_animals"))
 ):
-    return service.deactivate(animal_id)
+    service = AnimalService(db)
+    return await service.deactivate(animal_id)
 
 
 @animals_router.post(
@@ -120,11 +128,12 @@ def deactivate_animal(
     summary="[FUNCIONARIO/ADMIN] Upload or replace animal image",
 )
 @route_logger
-def upload_animal_image(
+async def upload_animal_image(
     request: Request,
     animal_id: int,
     image: UploadFile = File(...),
-    service: AnimalService = Depends(AnimalService),
+    db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(PermissionChecker("manage_animals")),
 ):
-    return service.set_image(animal_id, image)
+    service = AnimalService(db)
+    return await service.set_image(animal_id, image)

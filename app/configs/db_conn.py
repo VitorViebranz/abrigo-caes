@@ -1,90 +1,41 @@
-import logging
 import os
 import urllib.parse
 
 from dotenv import load_dotenv
-from sqlalchemy import create_engine
-from sqlalchemy.orm import Session, sessionmaker
-from sqlalchemy.pool import NullPool
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 load_dotenv()
 
-_ENGINE_CACHE: dict[str, object] = {}
+
+def _get_async_connection_string_from_env() -> str:
+    username = os.getenv("POSTGRES_USER", "postgres")
+    password = urllib.parse.quote_plus(os.getenv("POSTGRES_PASSWORD", ""))
+    server = os.getenv("POSTGRES_SERVER", "localhost")
+    database = os.getenv("POSTGRES_DB", "")
+    return f"postgresql+asyncpg://{username}:{password}@{server}/{database}"
 
 
-class PostgresConnection:
-    def __init__(
-        self,
-        *,
-        pool_size: int = 10,
-        max_overflow: int = 5,
-        pool_timeout: int = 30,
-        pool_recycle: int = 1800,
-        pool_pre_ping: bool = True,
-        pool_use_lifo: bool = True,
-        no_pool: bool = False,
-        dispose_on_exit: bool = False,
-    ):
-        self.dispose_on_exit = dispose_on_exit
-        self.connection_string = self._get_connection_string_from_env()
+async_engine = create_async_engine(
+    _get_async_connection_string_from_env(),
+    pool_pre_ping=True,
+    pool_size=10,
+    max_overflow=5,
+)
 
-        if self.connection_string not in _ENGINE_CACHE:
-            engine_kwargs = {"pool_pre_ping": pool_pre_ping}
+AsyncSessionLocal = async_sessionmaker(
+    async_engine,
+    class_=AsyncSession,
+    expire_on_commit=False,
+    autoflush=False,
+    autocommit=False,
+)
 
-            if no_pool:
-                engine_kwargs["poolclass"] = NullPool
-            else:
-                engine_kwargs.update(
-                    pool_size=pool_size,
-                    max_overflow=max_overflow,
-                    pool_timeout=pool_timeout,
-                    pool_recycle=pool_recycle,
-                    pool_use_lifo=pool_use_lifo,
-                )
 
-            _ENGINE_CACHE[self.connection_string] = create_engine(
-                self.connection_string, **engine_kwargs
-            )
-
-        self.engine = _ENGINE_CACHE[self.connection_string]
-        self.SessionFactory = sessionmaker(bind=self.engine, expire_on_commit=False)
-
-    def _get_connection_string_from_env(self) -> str:
-        username = os.getenv("POSTGRES_USER", "postgres")
-        password = urllib.parse.quote_plus(os.getenv("POSTGRES_PASSWORD", ""))
-        server   = os.getenv("POSTGRES_SERVER", "localhost")
-        database = os.getenv("POSTGRES_DB", "")
-        return f"postgresql+psycopg2://{username}:{password}@{server}/{database}"
-
-    def get_session(self) -> Session:
-        return self.SessionFactory()
-
-    def get_connection(self):
-        return self.engine.connect()
-
-    def close(self):
-        if hasattr(self, "engine") and self.engine is not None:
-            logging.debug("Disposing engine pool.")
-            self.engine.dispose()
-
-    def __enter__(self) -> Session:
-        self._local_session = self.get_session()
-        return self._local_session
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        session: Session = getattr(self, "_local_session", None)
-        if session:
-            try:
-                if exc_type:
-                    logging.exception("Error detected — rolling back session.")
-                    session.rollback()
-                else:
-                    logging.debug("Committing session.")
-                    session.commit()
-            finally:
-                logging.debug("Closing session.")
-                session.close()
-                del self._local_session
-
-        if self.dispose_on_exit:
-            self.close()
+async def get_db():
+    async with AsyncSessionLocal() as session:
+        try:
+            yield session
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            raise

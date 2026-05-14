@@ -1,5 +1,5 @@
 import enum
-from datetime import date, datetime, timezone
+from datetime import date, datetime
 from sqlalchemy import Boolean, Column, Date, DateTime, Enum, Integer, Numeric, String
 from .base_model import BaseModel
 
@@ -28,6 +28,4 @@ class FinancialModel(BaseModel):
     description = Column(String(300), nullable=True)
     donor = Column(String(150), nullable=True)
     is_active = Column(Boolean, default=True, nullable=False)
-    created_at = Column(
-        DateTime, default=lambda: datetime.now(timezone.utc)
-    )
+    created_at = Column(DateTime, default=datetime.utcnow)

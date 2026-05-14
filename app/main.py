@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 
 from uvicorn import run
 from dotenv import load_dotenv
@@ -41,7 +42,8 @@ app.add_middleware(
 
 app.add_middleware(TraceIDMiddleware)
 
-app.mount("/assets", StaticFiles(directory="assets"), name="assets")
+assets_dir = Path(__file__).resolve().parent / "assets"
+app.mount("/assets", StaticFiles(directory=str(assets_dir)), name="assets")
 
 app.include_router(auth_router)
 app.include_router(users_router)
@@ -55,7 +57,7 @@ app.include_router(donations_router)
 
 
 @app.get("/status", tags=["Status"])
-def get_status():
+async def get_status():
     return {"status": "online", "system": "Abrigo de Animais API"}
 
 if __name__ == "__main__":

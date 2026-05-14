@@ -1,51 +1,51 @@
 from datetime import date
-from sqlalchemy import select, extract
+
+from sqlalchemy import extract, select
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from models import FinancialModel, FinancialType
-from configs import PostgresConnection
 
 
 class FinancialDAO:
+    def __init__(self, session: AsyncSession):
+        self._session = session
 
-    def __init__(self):
-        pass
+    async def get_all(self, include_inactive: bool = False) -> list[FinancialModel]:
+        stmt = select(FinancialModel)
+        if not include_inactive:
+            stmt = stmt.where(FinancialModel.is_active == True)
+        result = await self._session.execute(stmt.order_by(FinancialModel.date.desc()))
+        return result.scalars().all()
 
-    def get_all(self, include_inactive: bool = False) -> list[FinancialModel]:
-        with PostgresConnection() as session:
-            stmt = select(FinancialModel)
-            if not include_inactive:
-                stmt = stmt.where(FinancialModel.is_active == True)
-            return session.execute(stmt.order_by(FinancialModel.date.desc())).scalars().all()
+    async def get_by_id(self, record_id: int) -> FinancialModel | None:
+        result = await self._session.execute(
+            select(FinancialModel).where(FinancialModel.id == record_id)
+        )
+        return result.scalar_one_or_none()
 
-    def get_by_id(self, record_id: int) -> FinancialModel | None:
-        with PostgresConnection() as session:
-            return session.execute(
-                select(FinancialModel).where(FinancialModel.id == record_id)
-            ).scalar_one_or_none()
+    async def get_by_month(self, year: int, month: int) -> list[FinancialModel]:
+        result = await self._session.execute(
+            select(FinancialModel).where(
+                FinancialModel.is_active == True,
+                extract("year", FinancialModel.date) == year,
+                extract("month", FinancialModel.date) == month,
+            ).order_by(FinancialModel.date.desc())
+        )
+        return result.scalars().all()
 
-    def get_by_month(self, year: int, month: int) -> list[FinancialModel]:
-        with PostgresConnection() as session:
-            return session.execute(
-                select(FinancialModel).where(
-                    FinancialModel.is_active == True,
-                    extract("year", FinancialModel.date) == year,
-                    extract("month", FinancialModel.date) == month,
-                ).order_by(FinancialModel.date.desc())
-            ).scalars().all()
-
-    def create(self, **kwargs) -> FinancialModel:
+    async def create(self, **kwargs) -> FinancialModel:
         record = FinancialModel(**kwargs)
-        with PostgresConnection() as session:
-            session.add(record)
-            session.flush()
-            session.refresh(record)
-            return record
+        self._session.add(record)
+        await self._session.flush()
+        await self._session.refresh(record)
+        return record
 
-    def deactivate(self, record_id: int) -> bool:
-        with PostgresConnection() as session:
-            record = session.execute(
-                select(FinancialModel).where(FinancialModel.id == record_id)
-            ).scalar_one_or_none()
-            if not record:
-                return False
-            record.is_active = False
-            return True
+    async def deactivate(self, record_id: int) -> bool:
+        result = await self._session.execute(
+            select(FinancialModel).where(FinancialModel.id == record_id)
+        )
+        record = result.scalar_one_or_none()
+        if not record:
+            return False
+        record.is_active = False
+        return True

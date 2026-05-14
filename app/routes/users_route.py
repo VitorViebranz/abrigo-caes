@@ -1,5 +1,7 @@
 from fastapi import APIRouter, Depends, Request
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from configs import get_db
 from configs.decorators import route_logger
 from dependencies import PermissionChecker
 from schemas import UserCreateRequest, UserUpdateRequest, UserResponse, UserListResponse, PaginationParams
@@ -17,12 +19,13 @@ users_router = APIRouter(
     summary="[ADMIN] List all users"
 )
 @route_logger
-def get_all_users(
+async def get_all_users(
     request: Request,
     pagination: PaginationParams = Depends(),
-    service: UserService = Depends(UserService)
+    db: AsyncSession = Depends(get_db),
 ):
-    return service.get_all(page=pagination.page, page_size=pagination.page_size)
+    service = UserService(db)
+    return await service.get_all(page=pagination.page, page_size=pagination.page_size)
 
 @users_router.get(
     "/{user_id}",
@@ -30,12 +33,13 @@ def get_all_users(
     summary="[ADMIN] Get a user by ID"
 )
 @route_logger
-def get_user(
+async def get_user(
     request: Request,
     user_id: int,
-    service: UserService = Depends(UserService)
+    db: AsyncSession = Depends(get_db),
 ):
-    return service.get_by_id(user_id)
+    service = UserService(db)
+    return await service.get_by_id(user_id)
 
 @users_router.post(
     "",
@@ -44,12 +48,13 @@ def get_user(
     summary="[ADMIN] Create a new user"
 )
 @route_logger
-def create_user(
+async def create_user(
     request: Request,
     body: UserCreateRequest,
-    service: UserService = Depends(UserService)
+    db: AsyncSession = Depends(get_db),
 ):
-    return service.create(body)
+    service = UserService(db)
+    return await service.create(body)
 
 @users_router.patch(
     "/{user_id}",
@@ -57,34 +62,37 @@ def create_user(
     summary="[ADMIN] Update user details"
 )
 @route_logger
-def update_user(
+async def update_user(
     request: Request,
     user_id: int,
     body: UserUpdateRequest,
-    service: UserService = Depends(UserService)
+    db: AsyncSession = Depends(get_db),
 ):
-    return service.update(user_id, body)
+    service = UserService(db)
+    return await service.update(user_id, body)
 
 @users_router.patch(
     "/{user_id}/deactivate",
     summary="[ADMIN] Deactivate a user"
 )
 @route_logger
-def deactivate_user(
+async def deactivate_user(
     request: Request,
     user_id: int,
-    service: UserService = Depends(UserService)
+    db: AsyncSession = Depends(get_db),
 ):
-    return service.deactivate(user_id)
+    service = UserService(db)
+    return await service.deactivate(user_id)
 
 @users_router.patch(
     "/{user_id}/activate",
     summary="[ADMIN] Reactivate a user"
 )
 @route_logger
-def activate_user(
+async def activate_user(
     request: Request,
     user_id: int,
-    service: UserService = Depends(UserService)
+    db: AsyncSession = Depends(get_db),
 ):
-    return service.activate(user_id)
+    service = UserService(db)
+    return await service.activate(user_id)

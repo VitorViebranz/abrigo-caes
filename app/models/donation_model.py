@@ -1,4 +1,4 @@
-from datetime import date, datetime, timezone
+from datetime import date, datetime
 from typing import TYPE_CHECKING
 
 from sqlalchemy import Boolean, Column, Date, DateTime, ForeignKey, Integer, Numeric, String
@@ -19,7 +19,7 @@ class DonationModel(BaseModel):
     monetary_value = Column(Numeric(10, 2), nullable=True)
     description = Column(String(300), nullable=True)
     is_active = Column(Boolean, default=True, nullable=False)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime, default=datetime.utcnow)
 
     items: Mapped[list["DonationItemModel"]] = relationship(
         "DonationItemModel",

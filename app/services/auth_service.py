@@ -1,6 +1,7 @@
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 
 from fastapi import HTTPException, status
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from configs.security import EXPIRE_MINUTES
 from configs import create_access_token
@@ -10,12 +11,11 @@ from utils import verify_password
 
 
 class AuthService:
+    def __init__(self, db: AsyncSession):
+        self._dao = UserDAO(db)
 
-    def __init__(self):
-        self._dao = UserDAO()
-
-    def login(self, request: LoginRequest) -> TokenResponse:
-        user = self._dao.get_by_email(request.email)
+    async def login(self, request: LoginRequest) -> TokenResponse:
+        user = await self._dao.get_by_email(request.email)
 
         invalid_credentials = HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -38,8 +38,8 @@ class AuthService:
             "sub": str(user.id)
         })
 
-        expires_at = datetime.now(timezone.utc) + timedelta(minutes=EXPIRE_MINUTES)
-        self._dao.update_token(user.id, token, expires_at)
+        expires_at = datetime.utcnow() + timedelta(minutes=EXPIRE_MINUTES)
+        await self._dao.update_token(user.id, token, expires_at)
 
         role_value = getattr(user.role, "name", None) or getattr(user.role, "value", None) or user.role
         return TokenResponse(

@@ -1,10 +1,12 @@
 from sqlalchemy import insert
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from models import SystemLog
-from configs.db_conn import PostgresConnection
 
 class LogDAO:
-    def create(self, **kwargs) -> None:
+    def __init__(self, session: AsyncSession):
+        self._session = session
+
+    async def create(self, **kwargs) -> None:
         stmt = insert(SystemLog).values(**kwargs)
-        
-        with PostgresConnection() as session:
-            session.execute(stmt)
+        await self._session.execute(stmt)

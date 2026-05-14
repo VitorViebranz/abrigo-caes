@@ -1,83 +1,79 @@
 import datetime
 
 from sqlalchemy import func, insert, select, update
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from models import UserModel as User
-from configs import PostgresConnection
 
 
 class UserDAO:
+    def __init__(self, session: AsyncSession):
+        self._session = session
 
-    def __init__(self):
-        pass
+    async def get_page(self, page: int, page_size: int) -> tuple[list[User], int]:
+        offset = (page - 1) * page_size
+        count_stmt = select(func.count()).select_from(User)
+        data_stmt = select(User).order_by(User.id).offset(offset).limit(page_size)
 
-    def get_page(self, page: int, page_size: int) -> tuple[list[User], int]:
-        with PostgresConnection() as session:
-            offset = (page - 1) * page_size
-            count_stmt = select(func.count()).select_from(User)
-            data_stmt = select(User).order_by(User.id).offset(offset).limit(page_size)
+        total_result = await self._session.execute(count_stmt)
+        data_result = await self._session.execute(data_stmt)
+        total = total_result.scalar_one()
+        items = data_result.unique().scalars().all()
+        return items, total
 
-            total = session.execute(count_stmt).scalar_one()
-            items = session.execute(data_stmt).unique().scalars().all()
-            return items, total
+    async def get_by_email(self, email: str) -> User | None:
+        stmt = select(User).where(User.email == email)
+        result = await self._session.execute(stmt)
+        return result.unique().scalar_one_or_none()
 
-    def get_by_email(self, email: str) -> User | None:
-        with PostgresConnection() as session:
-            stmt = select(User).where(User.email == email)
-            return session.execute(stmt).unique().scalar_one_or_none()
+    async def get_by_id(self, user_id: int) -> User | None:
+        stmt = select(User).where(User.id == user_id)
+        result = await self._session.execute(stmt)
+        return result.scalar_one_or_none()
 
-    def get_by_id(self, user_id: int) -> User | None:
-        with PostgresConnection() as session:
-            stmt = select(User).where(User.id == user_id)
-            return session.execute(stmt).scalar_one_or_none()
+    async def create(self, full_name: str, email: str, hashed_password: str, role_id: int | None) -> User:
+        stmt = insert(User).values(
+            full_name=full_name,
+            email=email,
+            hashed_password=hashed_password,
+            role_id=role_id,
+        )
+        await self._session.execute(stmt)
+        return await self.get_by_email(email)
 
-    def create(self, full_name: str, email: str, hashed_password: str, role_id: int | None) -> User:
-        with PostgresConnection() as session:
-            stmt = insert(User).values(
-                full_name=full_name,
-                email=email,
-                hashed_password=hashed_password,
-                role_id=role_id,
-            )
-            session.execute(stmt)
-            session.commit()
-            return self.get_by_email(email)
+    async def update(self, user_id: int, **kwargs) -> User | None:
+        stmt = (
+            update(User)
+            .where(User.id == user_id)
+            .values(**kwargs)
+        )
+        result = await self._session.execute(stmt)
+        if result.rowcount == 0:
+            return None
+        return await self.get_by_id(user_id)
 
-    def update(self, user_id: int, **kwargs) -> User | None:
-        with PostgresConnection() as session:
-            stmt = (
-                update(User)
-                .where(User.id == user_id)
-                .values(**kwargs)
-            )
-            result = session.execute(stmt)
-            if result.rowcount == 0:
-                return None
-            session.commit()
-            return self.get_by_id(user_id)
+    async def update_active(self, user_id: int, is_active: bool) -> User | None:
+        stmt = (
+            update(User)
+            .where(User.id == user_id)
+            .values(is_active=is_active)
+        )
+        result = await self._session.execute(stmt)
+        if result.rowcount == 0:
+            return None
+        return await self.get_by_id(user_id)
 
-    def update_active(self, user_id: int, is_active: bool) -> User | None:
-        with PostgresConnection() as session:
-            stmt = (
-                update(User)
-                .where(User.id == user_id)
-                .values(is_active=is_active)
-            )
-            result = session.execute(stmt)
-            if result.rowcount == 0:
-                return None
-            session.commit()
-            return self.get_by_id(user_id)
+    async def update_token(self, user_id: int, token: str, expires_at: datetime) -> None:
+        if expires_at.tzinfo is not None:
+            expires_at = expires_at.astimezone(datetime.timezone.utc).replace(tzinfo=None)
+        stmt = (
+            update(User)
+            .where(User.id == user_id)
+            .values(token=token, token_expires_at=expires_at)
+        )
+        await self._session.execute(stmt)
 
-    def update_token(self, user_id: int, token: str, expires_at: datetime) -> None:
-        with PostgresConnection() as session:
-            stmt = (
-                update(User)
-                .where(User.id == user_id)
-                .values(token=token, token_expires_at=expires_at)
-            )
-            session.execute(stmt)
-
-    def get_by_token(self, token: str) -> User | None:
-        with PostgresConnection() as session:
-            stmt = select(User).where(User.token == token)
-            return session.execute(stmt).unique().scalar_one_or_none()
+    async def get_by_token(self, token: str) -> User | None:
+        stmt = select(User).where(User.token == token)
+        result = await self._session.execute(stmt)
+        return result.unique().scalar_one_or_none()

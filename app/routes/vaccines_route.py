@@ -1,5 +1,7 @@
 from fastapi import APIRouter, Depends, Request
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from configs import get_db
 from configs.decorators import route_logger
 from dependencies import PermissionChecker
 from schemas import VaccineCreateRequest, VaccineUpdateRequest, VaccineResponse, VaccineAlertResponse
@@ -17,8 +19,12 @@ vaccines_router = APIRouter(
     summary="[VOLUNTEER/ADMIN] List overdue vaccines",
 )
 @route_logger
-def get_overdue_vaccines(request: Request, service: VaccineService = Depends(VaccineService)):
-    return service.get_overdue_alerts()
+async def get_overdue_vaccines(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    service = VaccineService(db)
+    return await service.get_overdue_alerts()
 
 @vaccines_router.get(
     "/alerts/due-soon",
@@ -26,12 +32,13 @@ def get_overdue_vaccines(request: Request, service: VaccineService = Depends(Vac
     summary="[VOLUNTEER/ADMIN] List vaccines due within N days (default 7)",
 )
 @route_logger
-def get_due_soon_vaccines(
+async def get_due_soon_vaccines(
     request: Request,
     days: int = 7,
-    service: VaccineService = Depends(VaccineService),
+    db: AsyncSession = Depends(get_db),
 ):
-    return service.get_due_soon_alerts(days=days)
+    service = VaccineService(db)
+    return await service.get_due_soon_alerts(days=days)
 
 @vaccines_router.get(
     "/animal/{animal_id}",
@@ -39,12 +46,13 @@ def get_due_soon_vaccines(
     summary="[VOLUNTEER/ADMIN] List all vaccines for an animal",
 )
 @route_logger
-def get_vaccines_by_animal(
+async def get_vaccines_by_animal(
     request: Request,
     animal_id: int,
-    service: VaccineService = Depends(VaccineService),
+    db: AsyncSession = Depends(get_db),
 ):
-    return service.get_by_animal(animal_id)
+    service = VaccineService(db)
+    return await service.get_by_animal(animal_id)
 
 @vaccines_router.post(
     "",
@@ -53,12 +61,13 @@ def get_vaccines_by_animal(
     summary="[VOLUNTEER/ADMIN] Register a new vaccine",
 )
 @route_logger
-def create_vaccine(
+async def create_vaccine(
     request: Request,
     body: VaccineCreateRequest,
-    service: VaccineService = Depends(VaccineService),
+    db: AsyncSession = Depends(get_db),
 ):
-    return service.create(body)
+    service = VaccineService(db)
+    return await service.create(body)
 
 @vaccines_router.patch(
     "/{vaccine_id}",
@@ -66,22 +75,24 @@ def create_vaccine(
     summary="[VOLUNTEER/ADMIN] Update a vaccine record",
 )
 @route_logger
-def update_vaccine(
+async def update_vaccine(
     request: Request,
     vaccine_id: int,
     body: VaccineUpdateRequest,
-    service: VaccineService = Depends(VaccineService),
+    db: AsyncSession = Depends(get_db),
 ):
-    return service.update(vaccine_id, body)
+    service = VaccineService(db)
+    return await service.update(vaccine_id, body)
 
 @vaccines_router.delete(
     "/{vaccine_id}",
     summary="[VOLUNTEER/ADMIN] Deactivate a vaccine record (soft delete)",
 )
 @route_logger
-def deactivate_vaccine(
+async def deactivate_vaccine(
     request: Request,
     vaccine_id: int,
-    service: VaccineService = Depends(VaccineService),
+    db: AsyncSession = Depends(get_db),
 ):
-    return service.deactivate(vaccine_id)
+    service = VaccineService(db)
+    return await service.deactivate(vaccine_id)

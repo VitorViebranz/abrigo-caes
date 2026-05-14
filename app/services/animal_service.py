@@ -1,9 +1,12 @@
 from pathlib import Path
 from uuid import uuid4
 
+import aiofiles
 from fastapi import HTTPException, UploadFile, status
-from daos import AnimalDAO
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from configs.pagination import MAX_PAGE_SIZE
+from daos import AnimalDAO
 from models import AdoptionStatus, AnimalModel
 from schemas import (
     AnimalCreateRequest,
@@ -22,22 +25,22 @@ ALLOWED_TRANSITIONS: dict[AdoptionStatus, list[AdoptionStatus]] = {
 
 
 class AnimalService:
-    def __init__(self):
-        self._dao = AnimalDAO()
+    def __init__(self, db: AsyncSession):
+        self._dao = AnimalDAO(db)
 
         self._image_root = Path(__file__).resolve().parent / "assets" / "img" / "animals"
 
     def _to_response(self, animal: AnimalModel) -> AnimalResponse:
         return AnimalResponse.model_validate(animal)
 
-    def get_all(
+    async def get_all(
         self,
         include_inactive: bool,
         page: int,
         page_size: int,
     ) -> AnimalListResponse:
         effective_page_size = min(page_size, MAX_PAGE_SIZE)
-        animals, total = self._dao.get_page(
+        animals, total = await self._dao.get_page(
             include_inactive=include_inactive,
             page=page,
             page_size=effective_page_size,
@@ -52,30 +55,30 @@ class AnimalService:
             ),
         )
 
-    def get_by_id(self, animal_id: int) -> AnimalResponse:
-        animal = self._dao.get_by_id(animal_id)
+    async def get_by_id(self, animal_id: int) -> AnimalResponse:
+        animal = await self._dao.get_by_id(animal_id)
         if not animal:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Animal not found.")
         return self._to_response(animal)
 
-    def create(self, animal_create: AnimalCreateRequest) -> AnimalResponse:
-        animal = self._dao.create(animal_create)
+    async def create(self, animal_create: AnimalCreateRequest) -> AnimalResponse:
+        animal = await self._dao.create(animal_create)
         return self._to_response(animal)
 
-    def update(self, animal_id: int, animal_update: AnimalUpdateRequest) -> dict:
+    async def update(self, animal_id: int, animal_update: AnimalUpdateRequest) -> dict:
         updates = animal_update.model_dump(exclude_unset=True)
         if not updates:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="No fields provided for update.",
             )
-        if not self._dao.get_by_id(animal_id):
+        if not await self._dao.get_by_id(animal_id):
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Animal not found.")
-        self._dao.update(animal_id, animal_update)
+        await self._dao.update(animal_id, animal_update)
         return {"message": "Animal updated successfully."}
 
-    def update_status(self, animal_id: int, animal_status_update: AnimalStatusUpdateRequest) -> dict:
-        animal = self._dao.get_by_id(animal_id)
+    async def update_status(self, animal_id: int, animal_status_update: AnimalStatusUpdateRequest) -> dict:
+        animal = await self._dao.get_by_id(animal_id)
         if not animal:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Animal not found.")
 
@@ -92,17 +95,17 @@ class AnimalService:
                 ),
             )
 
-        self._dao.update_status(animal_id, adoption_status=new_status)
+        await self._dao.update_status(animal_id, adoption_status=new_status)
         return {"message": f"Animal status updated to '{new_status.value}'."}
 
-    def deactivate(self, animal_id: int) -> dict:
-        animal = self._dao.deactivate(animal_id)
+    async def deactivate(self, animal_id: int) -> dict:
+        animal = await self._dao.deactivate(animal_id)
         if not animal:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Animal not found.")
         return {"message": "Animal deactivated. Animals are never permanently deleted."}
 
-    def set_image(self, animal_id: int, file: UploadFile) -> AnimalResponse:
-        animal = self._dao.get_by_id(animal_id)
+    async def set_image(self, animal_id: int, file: UploadFile) -> AnimalResponse:
+        animal = await self._dao.get_by_id(animal_id)
         if not animal:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Animal not found.")
 
@@ -116,11 +119,12 @@ class AnimalService:
         target_dir.mkdir(parents=True, exist_ok=True)
         target_path = target_dir / file_name
 
-        with target_path.open("wb") as output:
-            output.write(file.file.read())
+        content = await file.read()
+        async with aiofiles.open(target_path, "wb") as output:
+            await output.write(content)
 
         relative_path = str(Path("app") / "assets" / "img" / "animals" / str(animal_id) / file_name)
-        self._dao.update_image_path(animal_id, relative_path)
+        await self._dao.update_image_path(animal_id, relative_path)
 
-        animal = self._dao.get_by_id(animal_id)
+        animal = await self._dao.get_by_id(animal_id)
         return self._to_response(animal)

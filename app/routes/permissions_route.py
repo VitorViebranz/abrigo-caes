@@ -1,5 +1,7 @@
 from fastapi import APIRouter, Depends, Request
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from configs import get_db
 from configs.decorators import route_logger
 from dependencies import PermissionChecker
 from schemas import PermissionCreateRequest, PermissionResponse
@@ -18,11 +20,12 @@ permissions_router = APIRouter(
     summary="[ADMIN] List all permissions",
 )
 @route_logger
-def get_permissions(
+async def get_permissions(
     request: Request,
-    service: PermissionService = Depends(PermissionService),
+    db: AsyncSession = Depends(get_db),
 ):
-    return service.get_all()
+    service = PermissionService(db)
+    return await service.get_all()
 
 
 @permissions_router.post(
@@ -32,9 +35,10 @@ def get_permissions(
     summary="[ADMIN] Create a permission",
 )
 @route_logger
-def create_permission(
+async def create_permission(
     request: Request,
     body: PermissionCreateRequest,
-    service: PermissionService = Depends(PermissionService),
+    db: AsyncSession = Depends(get_db),
 ):
-    return service.create(body)
+    service = PermissionService(db)
+    return await service.create(body)

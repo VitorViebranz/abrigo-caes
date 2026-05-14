@@ -1,21 +1,21 @@
 from fastapi import HTTPException, status
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from daos import UserDAO, RoleDAO, PermissionDAO
 from configs.pagination import MAX_PAGE_SIZE
+from daos import UserDAO, RoleDAO, PermissionDAO
 from schemas import UserCreateRequest, UserUpdateRequest, UserResponse, UserListResponse, PaginationInfo
 from utils import hash_password
 
 
 class UserService:
+    def __init__(self, db: AsyncSession):
+        self._dao = UserDAO(db)
+        self._role_dao = RoleDAO(db)
+        self._permission_dao = PermissionDAO(db)
 
-    def __init__(self):
-        self._dao = UserDAO()
-        self._role_dao = RoleDAO()
-        self._permission_dao = PermissionDAO()
-
-    def get_all(self, page: int, page_size: int) -> UserListResponse:
+    async def get_all(self, page: int, page_size: int) -> UserListResponse:
         effective_page_size = min(page_size, MAX_PAGE_SIZE)
-        users, total = self._dao.get_page(page=page, page_size=effective_page_size)
+        users, total = await self._dao.get_page(page=page, page_size=effective_page_size)
         return UserListResponse(
             data=[UserResponse.model_validate(u) for u in users],
             pagination=PaginationInfo(
@@ -26,22 +26,22 @@ class UserService:
             ),
         )
 
-    def get_by_id(self, user_id: int) -> UserResponse:
-        user = self._dao.get_by_id(user_id)
+    async def get_by_id(self, user_id: int) -> UserResponse:
+        user = await self._dao.get_by_id(user_id)
         if not user:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found.")
         return UserResponse.model_validate(user)
 
-    def create(self, request: UserCreateRequest) -> UserResponse:
-        existing = self._dao.get_by_email(request.email)
+    async def create(self, request: UserCreateRequest) -> UserResponse:
+        existing = await self._dao.get_by_email(request.email)
         if existing:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail=f"Email '{request.email}' is already registered.",
             )
 
-        role_id = self._resolve_role_id(request.role, request.permissions)
-        user = self._dao.create(
+        role_id = await self._resolve_role_id(request.role, request.permissions)
+        user = await self._dao.create(
             full_name=request.full_name,
             email=request.email,
             hashed_password=hash_password(request.password),
@@ -49,7 +49,7 @@ class UserService:
         )
         return UserResponse.model_validate(user)
 
-    def update(self, user_id: int, request: UserUpdateRequest) -> UserResponse:
+    async def update(self, user_id: int, request: UserUpdateRequest) -> UserResponse:
         updates = request.model_dump(exclude_none=True)
         role_name = updates.pop("role", None)
         permissions = updates.pop("permissions", None)
@@ -60,38 +60,38 @@ class UserService:
             )
 
         if role_name is not None or permissions is not None:
-            role_id = self._resolve_role_id(role_name or "voluntario", permissions)
+            role_id = await self._resolve_role_id(role_name or "voluntario", permissions)
             updates["role_id"] = role_id
 
-        user = self._dao.update(user_id, **updates)
+        user = await self._dao.update(user_id, **updates)
         if not user:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found.")
         return UserResponse.model_validate(user)
 
-    def _resolve_role_id(self, role_name: str, permissions: list[str] | None) -> int | None:
-        role = self._role_dao.get_by_name(role_name)
+    async def _resolve_role_id(self, role_name: str, permissions: list[str] | None) -> int | None:
+        role = await self._role_dao.get_by_name(role_name)
         if not role:
-            role = self._role_dao.create(role_name)
+            role = await self._role_dao.create(role_name)
 
         if permissions is not None:
             permission_ids = []
             for name in permissions:
-                permission = self._permission_dao.get_by_name(name)
+                permission = await self._permission_dao.get_by_name(name)
                 if not permission:
-                    permission = self._permission_dao.create(name, None)
+                    permission = await self._permission_dao.create(name, None)
                 permission_ids.append(permission.id)
-            self._role_dao.set_permissions(role.id, permission_ids)
+            await self._role_dao.set_permissions(role.id, permission_ids)
 
         return role.id
 
-    def deactivate(self, user_id: int) -> dict:
-        user = self._dao.update_active(user_id, is_active=False)
+    async def deactivate(self, user_id: int) -> dict:
+        user = await self._dao.update_active(user_id, is_active=False)
         if not user:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found.")
         return {"message": f"User '{user.email}' deactivated successfully."}
 
-    def activate(self, user_id: int) -> dict:
-        user = self._dao.update_active(user_id, is_active=True)
+    async def activate(self, user_id: int) -> dict:
+        user = await self._dao.update_active(user_id, is_active=True)
         if not user:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found.")
         return {"message": f"User '{user.email}' activated successfully."}

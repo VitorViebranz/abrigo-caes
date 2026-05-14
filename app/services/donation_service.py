@@ -1,7 +1,7 @@
 from fastapi import HTTPException, status
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from configs import PostgresConnection
 from daos import DonationDAO
 from models import (
     DonationItemModel,
@@ -17,21 +17,21 @@ from schemas import DonationCreateRequest, DonationResponse
 
 
 class DonationService:
+    def __init__(self, db: AsyncSession):
+        self._db = db
+        self._dao = DonationDAO(db)
 
-    def __init__(self):
-        self._dao = DonationDAO()
-
-    def get_all(self) -> list[DonationResponse]:
-        donations = self._dao.get_all()
+    async def get_all(self) -> list[DonationResponse]:
+        donations = await self._dao.get_all()
         return [DonationResponse.model_validate(d) for d in donations]
 
-    def get_by_id(self, donation_id: int) -> DonationResponse:
-        donation = self._dao.get_by_id(donation_id)
+    async def get_by_id(self, donation_id: int) -> DonationResponse:
+        donation = await self._dao.get_by_id(donation_id)
         if not donation or not donation.is_active:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Donation not found.")
         return DonationResponse.model_validate(donation)
 
-    def create(self, request: DonationCreateRequest) -> DonationResponse:
+    async def create(self, request: DonationCreateRequest) -> DonationResponse:
         if not request.items and request.monetary_value is None:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -51,23 +51,24 @@ class DonationService:
                     detail="Item quantity must be positive.",
                 )
 
-        with PostgresConnection() as session:
+        async with self._db.begin():
             donation = DonationModel(
                 donor=request.donor,
                 date=request.date,
                 monetary_value=request.monetary_value,
                 description=request.description,
             )
-            session.add(donation)
-            session.flush()
+            self._db.add(donation)
+            await self._db.flush()
 
             for item in request.items:
-                inventory_item = session.execute(
+                result = await self._db.execute(
                     select(InventoryItemModel).where(
                         InventoryItemModel.id == item.item_id,
                         InventoryItemModel.is_active == True,
                     )
-                ).scalar_one_or_none()
+                )
+                inventory_item = result.scalar_one_or_none()
                 if not inventory_item:
                     raise HTTPException(
                         status_code=status.HTTP_404_NOT_FOUND,
@@ -82,7 +83,7 @@ class DonationService:
                     quantity=item.quantity,
                     unit=unit,
                 )
-                session.add(donation_item)
+                self._db.add(donation_item)
 
                 movement = InventoryMovementModel(
                     item_id=inventory_item.id,
@@ -93,7 +94,7 @@ class DonationService:
                     note="Donation",
                     reference=f"donation:{donation.id}",
                 )
-                session.add(movement)
+                self._db.add(movement)
 
             if request.monetary_value is not None:
                 financial = FinancialModel(
@@ -105,15 +106,15 @@ class DonationService:
                     donor=request.donor,
                     is_active=True,
                 )
-                session.add(financial)
+                self._db.add(financial)
 
-            session.flush()
+            await self._db.flush()
 
-        created = self._dao.get_by_id(donation.id)
+        created = await self._dao.get_by_id(donation.id)
         return DonationResponse.model_validate(created)
 
-    def deactivate(self, donation_id: int) -> dict:
-        deactivated = self._dao.deactivate(donation_id)
+    async def deactivate(self, donation_id: int) -> dict:
+        deactivated = await self._dao.deactivate(donation_id)
         if not deactivated:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Donation not found.")
         return {"message": "Donation deactivated."}

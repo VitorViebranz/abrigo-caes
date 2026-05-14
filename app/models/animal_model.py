@@ -1,5 +1,5 @@
 import enum
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import TYPE_CHECKING
 
 from sqlalchemy import Boolean, Column, Date, DateTime, Enum, Float, Integer, String
@@ -51,11 +51,11 @@ class AnimalModel(BaseModel):
     microchipped = Column(Boolean, default=False, nullable=False)
     image_path = Column(String(255), nullable=True)
 
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(
         DateTime,
-        default=lambda: datetime.now(timezone.utc),
-        onupdate=lambda: datetime.now(timezone.utc),
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
     )
 
     vaccines: Mapped[list["VaccineModel"]] = relationship(

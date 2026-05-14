@@ -1,5 +1,7 @@
 from fastapi import APIRouter, Depends, Request
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from configs import get_db
 from configs.decorators import route_logger
 from dependencies import PermissionChecker
 from schemas import (
@@ -28,13 +30,14 @@ inventory_router = APIRouter(
     summary="[FINANCIAL/ADMIN] List inventory items",
 )
 @route_logger
-def list_items(
+async def list_items(
     request: Request,
     include_inactive: bool = False,
     pagination: PaginationParams = Depends(),
-    service: InventoryService = Depends(InventoryService),
+    db: AsyncSession = Depends(get_db),
 ):
-    return service.get_items(
+    service = InventoryService(db)
+    return await service.get_items(
         include_inactive=include_inactive,
         page=pagination.page,
         page_size=pagination.page_size,
@@ -47,12 +50,13 @@ def list_items(
     summary="[FINANCIAL/ADMIN] Get an inventory item",
 )
 @route_logger
-def get_item(
+async def get_item(
     request: Request,
     item_id: int,
-    service: InventoryService = Depends(InventoryService),
+    db: AsyncSession = Depends(get_db),
 ):
-    return service.get_item(item_id)
+    service = InventoryService(db)
+    return await service.get_item(item_id)
 
 
 @inventory_router.post(
@@ -62,12 +66,13 @@ def get_item(
     summary="[FINANCIAL/ADMIN] Create an inventory item",
 )
 @route_logger
-def create_item(
+async def create_item(
     request: Request,
     body: InventoryItemCreateRequest,
-    service: InventoryService = Depends(InventoryService),
+    db: AsyncSession = Depends(get_db),
 ):
-    return service.create_item(body)
+    service = InventoryService(db)
+    return await service.create_item(body)
 
 
 @inventory_router.patch(
@@ -76,13 +81,14 @@ def create_item(
     summary="[FINANCIAL/ADMIN] Update an inventory item",
 )
 @route_logger
-def update_item(
+async def update_item(
     request: Request,
     item_id: int,
     body: InventoryItemUpdateRequest,
-    service: InventoryService = Depends(InventoryService),
+    db: AsyncSession = Depends(get_db),
 ):
-    return service.update_item(item_id, body)
+    service = InventoryService(db)
+    return await service.update_item(item_id, body)
 
 
 @inventory_router.patch(
@@ -90,12 +96,13 @@ def update_item(
     summary="[FINANCIAL/ADMIN] Deactivate an inventory item",
 )
 @route_logger
-def deactivate_item(
+async def deactivate_item(
     request: Request,
     item_id: int,
-    service: InventoryService = Depends(InventoryService),
+    db: AsyncSession = Depends(get_db),
 ):
-    return service.deactivate_item(item_id)
+    service = InventoryService(db)
+    return await service.deactivate_item(item_id)
 
 
 @inventory_router.post(
@@ -105,12 +112,13 @@ def deactivate_item(
     summary="[FINANCIAL/ADMIN] Register a stock movement",
 )
 @route_logger
-def create_movement(
+async def create_movement(
     request: Request,
     body: InventoryMovementCreateRequest,
-    service: InventoryService = Depends(InventoryService),
+    db: AsyncSession = Depends(get_db),
 ):
-    return service.create_movement(body)
+    service = InventoryService(db)
+    return await service.create_movement(body)
 
 
 @inventory_router.get(
@@ -119,12 +127,13 @@ def create_movement(
     summary="[FINANCIAL/ADMIN] List stock movements",
 )
 @route_logger
-def list_movements(
+async def list_movements(
     request: Request,
     item_id: int | None = None,
-    service: InventoryService = Depends(InventoryService),
+    db: AsyncSession = Depends(get_db),
 ):
-    return service.list_movements(item_id=item_id)
+    service = InventoryService(db)
+    return await service.list_movements(item_id=item_id)
 
 
 @inventory_router.get(
@@ -133,8 +142,9 @@ def list_movements(
     summary="[FINANCIAL/ADMIN] Get stock balances",
 )
 @route_logger
-def get_balances(
+async def get_balances(
     request: Request,
-    service: InventoryService = Depends(InventoryService),
+    db: AsyncSession = Depends(get_db),
 ):
-    return service.get_balances()
+    service = InventoryService(db)
+    return await service.get_balances()

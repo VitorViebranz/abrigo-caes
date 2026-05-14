@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime
 from sqlalchemy import Column, Integer, String, Text, DateTime
 from .base_model import BaseModel
 
@@ -11,4 +11,4 @@ class SystemLog(BaseModel):
     message = Column(Text, nullable=False)
     route = Column(String(255), nullable=True)
     method = Column(String(10), nullable=True)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime, default=datetime.utcnow)

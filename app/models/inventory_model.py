@@ -1,5 +1,5 @@
 import enum
-from datetime import date, datetime, timezone
+from datetime import date, datetime
 from typing import TYPE_CHECKING
 
 from sqlalchemy import Boolean, Column, Date, DateTime, Enum, ForeignKey, Integer, Numeric, String
@@ -24,11 +24,11 @@ class InventoryItemModel(BaseModel):
     description = Column(String(300), nullable=True)
     unit = Column(String(30), nullable=True)
     is_active = Column(Boolean, default=True, nullable=False)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(
         DateTime,
-        default=lambda: datetime.now(timezone.utc),
-        onupdate=lambda: datetime.now(timezone.utc),
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
     )
 
     movements: Mapped[list["InventoryMovementModel"]] = relationship(
@@ -49,6 +49,6 @@ class InventoryMovementModel(BaseModel):
     date = Column(Date, nullable=False)
     note = Column(String(300), nullable=True)
     reference = Column(String(100), nullable=True)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime, default=datetime.utcnow)
 
     item: Mapped["InventoryItemModel"] = relationship("InventoryItemModel", back_populates="movements")

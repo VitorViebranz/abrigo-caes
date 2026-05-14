@@ -1,81 +1,80 @@
 from datetime import date, timedelta
+
 from sqlalchemy import insert, select, update
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from models import VaccineModel
-from configs import PostgresConnection
 
 
 class VaccineDAO:
+    def __init__(self, session: AsyncSession):
+        self._session = session
 
-    def __init__(self):
-        pass
+    async def get_by_animal(self, animal_id: int) -> list[VaccineModel]:
+        result = await self._session.execute(
+            select(VaccineModel)
+            .where(VaccineModel.animal_id == animal_id, VaccineModel.is_active == True)
+            .order_by(VaccineModel.application_date.desc())
+        )
+        return result.scalars().all()
 
-    def get_by_animal(self, animal_id: int) -> list[VaccineModel]:
-        with PostgresConnection() as session:
-            return session.execute(
-                select(VaccineModel)
-                .where(VaccineModel.animal_id == animal_id, VaccineModel.is_active == True)
-                .order_by(VaccineModel.application_date.desc())
-            ).scalars().all()
+    async def get_by_id(self, vaccine_id: int) -> VaccineModel | None:
+        result = await self._session.execute(
+            select(VaccineModel).where(VaccineModel.id == vaccine_id)
+        )
+        return result.scalar_one_or_none()
 
-    def get_by_id(self, vaccine_id: int) -> VaccineModel | None:
-        with PostgresConnection() as session:
-            return session.execute(
-                select(VaccineModel).where(VaccineModel.id == vaccine_id)
-            ).scalar_one_or_none()
-
-    def get_overdue(self) -> list[VaccineModel]:
+    async def get_overdue(self) -> list[VaccineModel]:
         """Vaccines where next_dose is in the past and the record is active."""
-        with PostgresConnection() as session:
-            return session.execute(
-                select(VaccineModel).where(
-                    VaccineModel.is_active == True,
-                    VaccineModel.next_dose < date.today(),
-                )
-            ).scalars().all()
-
-    def get_due_soon(self, days: int = 7) -> list[VaccineModel]:
-        today     = date.today()
-        threshold = today + timedelta(days=days)
-        with PostgresConnection() as session:
-            return session.execute(
-                select(VaccineModel).where(
-                    VaccineModel.is_active == True,
-                    VaccineModel.next_dose >= today,
-                    VaccineModel.next_dose <= threshold,
-                )
-            ).scalars().all()
-
-    def create(self, **kwargs) -> VaccineModel:
-        vaccine = VaccineModel(**kwargs)
-        with PostgresConnection() as session:
-            session.add(vaccine)
-            session.flush()
-            session.refresh(vaccine)
-            return vaccine
-
-    def update(self, vaccine_id: int, **kwargs) -> VaccineModel | None:
-        with PostgresConnection() as session:
-            vaccine = session.execute(
-                select(VaccineModel).where(VaccineModel.id == vaccine_id)
-            ).scalar_one_or_none()
-            if not vaccine:
-                return None
-            for field, value in kwargs.items():
-                setattr(vaccine, field, value)
-            session.flush()
-            session.refresh(vaccine)
-            return vaccine
-
-    def deactivate(self, vaccine_id: int) -> bool:
-        with PostgresConnection() as session:
-            result = session.execute(
-                update(VaccineModel)
-                .where(VaccineModel.id == vaccine_id, VaccineModel.is_active == True)
-                .values(is_active=False)
+        result = await self._session.execute(
+            select(VaccineModel).where(
+                VaccineModel.is_active == True,
+                VaccineModel.next_dose < date.today(),
             )
-            return result.rowcount > 0
+        )
+        return result.scalars().all()
 
-    def create_bulk(self, animal_id: int, vaccines: list[dict], session: any) -> None:
+    async def get_due_soon(self, days: int = 7) -> list[VaccineModel]:
+        today = date.today()
+        threshold = today + timedelta(days=days)
+        result = await self._session.execute(
+            select(VaccineModel).where(
+                VaccineModel.is_active == True,
+                VaccineModel.next_dose >= today,
+                VaccineModel.next_dose <= threshold,
+            )
+        )
+        return result.scalars().all()
+
+    async def create(self, **kwargs) -> VaccineModel:
+        vaccine = VaccineModel(**kwargs)
+        self._session.add(vaccine)
+        await self._session.flush()
+        await self._session.refresh(vaccine)
+        return vaccine
+
+    async def update(self, vaccine_id: int, **kwargs) -> VaccineModel | None:
+        result = await self._session.execute(
+            select(VaccineModel).where(VaccineModel.id == vaccine_id)
+        )
+        vaccine = result.scalar_one_or_none()
+        if not vaccine:
+            return None
+        for field, value in kwargs.items():
+            setattr(vaccine, field, value)
+        await self._session.flush()
+        await self._session.refresh(vaccine)
+        return vaccine
+
+    async def deactivate(self, vaccine_id: int) -> bool:
+        result = await self._session.execute(
+            update(VaccineModel)
+            .where(VaccineModel.id == vaccine_id, VaccineModel.is_active == True)
+            .values(is_active=False)
+        )
+        return result.rowcount > 0
+
+    async def create_bulk(self, animal_id: int, vaccines: list[dict]) -> None:
         stmt_insert = insert(VaccineModel).values([
             {
                 "animal_id": animal_id,
@@ -86,4 +85,4 @@ class VaccineDAO:
             }
             for vaccine in vaccines
         ])
-        session.execute(stmt_insert)
+        await self._session.execute(stmt_insert)

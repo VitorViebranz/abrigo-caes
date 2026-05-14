@@ -1,5 +1,7 @@
 from fastapi import APIRouter, Depends, Request
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from configs import get_db
 from configs.decorators import route_logger
 from dependencies import PermissionChecker
 from schemas import RoleCreateRequest, RoleUpdateRequest, RoleResponse
@@ -18,11 +20,12 @@ roles_router = APIRouter(
     summary="[ADMIN] List all roles",
 )
 @route_logger
-def get_roles(
+async def get_roles(
     request: Request,
-    service: RoleService = Depends(RoleService),
+    db: AsyncSession = Depends(get_db),
 ):
-    return service.get_all()
+    service = RoleService(db)
+    return await service.get_all()
 
 
 @roles_router.post(
@@ -32,12 +35,13 @@ def get_roles(
     summary="[ADMIN] Create a role",
 )
 @route_logger
-def create_role(
+async def create_role(
     request: Request,
     body: RoleCreateRequest,
-    service: RoleService = Depends(RoleService),
+    db: AsyncSession = Depends(get_db),
 ):
-    return service.create(body)
+    service = RoleService(db)
+    return await service.create(body)
 
 
 @roles_router.patch(
@@ -46,10 +50,11 @@ def create_role(
     summary="[ADMIN] Update role permissions",
 )
 @route_logger
-def update_role(
+async def update_role(
     request: Request,
     role_id: int,
     body: RoleUpdateRequest,
-    service: RoleService = Depends(RoleService),
+    db: AsyncSession = Depends(get_db),
 ):
-    return service.update(role_id, body)
+    service = RoleService(db)
+    return await service.update(role_id, body)

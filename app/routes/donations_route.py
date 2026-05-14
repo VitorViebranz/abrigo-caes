@@ -1,5 +1,7 @@
 from fastapi import APIRouter, Depends, Request
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from configs import get_db
 from configs.decorators import route_logger
 from dependencies import PermissionChecker
 from schemas import DonationCreateRequest, DonationResponse
@@ -19,11 +21,12 @@ donations_router = APIRouter(
     summary="[FINANCIAL/ADMIN] List donations",
 )
 @route_logger
-def list_donations(
+async def list_donations(
     request: Request,
-    service: DonationService = Depends(DonationService),
+    db: AsyncSession = Depends(get_db),
 ):
-    return service.get_all()
+    service = DonationService(db)
+    return await service.get_all()
 
 
 @donations_router.get(
@@ -32,12 +35,13 @@ def list_donations(
     summary="[FINANCIAL/ADMIN] Get a donation by ID",
 )
 @route_logger
-def get_donation(
+async def get_donation(
     request: Request,
     donation_id: int,
-    service: DonationService = Depends(DonationService),
+    db: AsyncSession = Depends(get_db),
 ):
-    return service.get_by_id(donation_id)
+    service = DonationService(db)
+    return await service.get_by_id(donation_id)
 
 
 @donations_router.post(
@@ -47,12 +51,13 @@ def get_donation(
     summary="[FINANCIAL/ADMIN] Register a donation (money or items)",
 )
 @route_logger
-def create_donation(
+async def create_donation(
     request: Request,
     body: DonationCreateRequest,
-    service: DonationService = Depends(DonationService),
+    db: AsyncSession = Depends(get_db),
 ):
-    return service.create(body)
+    service = DonationService(db)
+    return await service.create(body)
 
 
 @donations_router.patch(
@@ -60,9 +65,10 @@ def create_donation(
     summary="[FINANCIAL/ADMIN] Deactivate a donation",
 )
 @route_logger
-def deactivate_donation(
+async def deactivate_donation(
     request: Request,
     donation_id: int,
-    service: DonationService = Depends(DonationService),
+    db: AsyncSession = Depends(get_db),
 ):
-    return service.deactivate(donation_id)
+    service = DonationService(db)
+    return await service.deactivate(donation_id)

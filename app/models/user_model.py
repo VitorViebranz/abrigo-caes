@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime
 from sqlalchemy import Boolean, Column, DateTime, Integer, String, Text, ForeignKey
 from sqlalchemy.orm import relationship
 from .base_model import BaseModel
@@ -17,6 +17,4 @@ class UserModel(BaseModel):
     token = Column(Text, nullable=True)
     token_expires_at = Column(DateTime, nullable=True)
 
-    created_at = Column(
-        DateTime, default=lambda: datetime.now(timezone.utc)
-    )
+    created_at = Column(DateTime, default=datetime.utcnow)

@@ -1,5 +1,7 @@
 from fastapi import APIRouter, Depends, Request
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from configs import get_db
 from configs.decorators import route_logger
 from dependencies import PermissionChecker
 from schemas import FinancialCreateRequest, FinancialResponse, MonthlyReportResponse
@@ -17,8 +19,12 @@ financial_router = APIRouter(
     summary="[FINANCIAL/ADMIN] List all active financial records"
 )
 @route_logger
-def get_all(request: Request, service: FinancialService = Depends(FinancialService)):
-    return service.get_all()
+async def get_all(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    service = FinancialService(db)
+    return await service.get_all()
 
 @financial_router.get(
     "/report/{year}/{month}",
@@ -26,13 +32,14 @@ def get_all(request: Request, service: FinancialService = Depends(FinancialServi
     summary="[FINANCIAL/ADMIN] Monthly report with income, expenses and balance"
 )
 @route_logger
-def monthly_report(
+async def monthly_report(
     request: Request,
     year: int,
     month: int,
-    service: FinancialService = Depends(FinancialService),
+    db: AsyncSession = Depends(get_db),
 ):
-    return service.get_monthly_report(year, month)
+    service = FinancialService(db)
+    return await service.get_monthly_report(year, month)
 
 @financial_router.get(
     "/{record_id}",
@@ -40,12 +47,13 @@ def monthly_report(
     summary="[FINANCIAL/ADMIN] Get a financial record by ID"
 )
 @route_logger
-def get_record(
+async def get_record(
     request: Request,
     record_id: int,
-    service: FinancialService = Depends(FinancialService),
+    db: AsyncSession = Depends(get_db),
 ):
-    return service.get_by_id(record_id)
+    service = FinancialService(db)
+    return await service.get_by_id(record_id)
 
 @financial_router.post(
     "",
@@ -54,21 +62,23 @@ def get_record(
     summary="[FINANCIAL/ADMIN] Register an income or expense"
 )
 @route_logger
-def create_record(
+async def create_record(
     request: Request,
     body: FinancialCreateRequest,
-    service: FinancialService = Depends(FinancialService),
+    db: AsyncSession = Depends(get_db),
 ):
-    return service.create(body)
+    service = FinancialService(db)
+    return await service.create(body)
 
 @financial_router.patch(
     "/{record_id}/deactivate",
     summary="[FINANCIAL/ADMIN] Deactivate a record (records cannot be deleted)"
 )
 @route_logger
-def deactivate_record(
+async def deactivate_record(
     request: Request,
     record_id: int,
-    service: FinancialService = Depends(FinancialService),
+    db: AsyncSession = Depends(get_db),
 ):
-    return service.deactivate(record_id)
+    service = FinancialService(db)
+    return await service.deactivate(record_id)
