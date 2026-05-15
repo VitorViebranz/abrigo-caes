@@ -1,7 +1,7 @@
 # 🐾 Abrigo de Animais — API
 
-Internal management system for an animal shelter, built with **FastAPI + PostgreSQL + SQLAlchemy**.
-Access is restricted to authenticated internal users only — no public-facing endpoints.
+Sistema de gestao interna para um abrigo de animais, construido com **FastAPI + PostgreSQL + SQLAlchemy**.
+Acesso restrito a usuarios internos autenticados — sem endpoints publicos.
 
 ---
 
@@ -25,42 +25,69 @@ Access is restricted to authenticated internal users only — no public-facing e
 /
 ├── app/
 │   ├── configs/
-│   │   ├── db_conn.py        # PostgresConnection — context manager + engine cache
-│   │   ├── security.py       # JWT + role-based dependencies
+│   │   ├── db_conn.py        # PostgresConnection — context manager + cache de engine
+│   │   ├── security.py       # JWT + dependencias baseadas em role
 │   │   └── __init__.py
 │   │
 │   ├── models/
 │   │   ├── base_model.py     # SQLAlchemy declarative base
-│   │   ├── user_model.py     # users table (admin | voluntario | financeiro)
-│   │   ├── animal_model.py   # animals table
-│   │   ├── vaccine_model.py  # vaccines table
-│   │   └── financial_model.py # financial table
+│   │   ├── user_model.py     # tabela users (admin | voluntario | financeiro)
+│   │   ├── animal_model.py   # tabela animals
+│   │   ├── vaccine_model.py  # tabela vaccines
+│   │   ├── financial_model.py # tabela financial
+│   │   ├── inventory_model.py # inventory items + movements
+│   │   ├── donation_model.py  # donations + donation items
+│   │   ├── log_model.py       # logs de requests
+│   │   └── rbac_model.py      # roles + permissions
 │   │
 │   ├── daos/
 │   │   ├── user_dao.py
 │   │   ├── animal_dao.py
-│   │   ├── vaccine_dao.py    # includes get_overdue() and get_due_soon()
-│   │   └── financial_dao.py  # includes get_by_month() for reports
+│   │   ├── vaccine_dao.py    # inclui get_overdue() e get_due_soon()
+│   │   ├── financial_dao.py  # inclui get_by_month() para relatorios
+│   │   ├── inventory_dao.py
+│   │   ├── donation_dao.py
+│   │   ├── role_dao.py
+│   │   ├── permission_dao.py
+│   │   └── log_dao.py
 │   │
 │   ├── schemas/
 │   │   ├── user_schema.py
-│   │   ├── animal_schema.py  # AnimalStatusUpdateRequest enforces transition rules
-│   │   ├── vaccine_schema.py # validates next_dose > application_date
-│   │   └── financial_schema.py
+│   │   ├── animal_schema.py  # AnimalStatusUpdateRequest aplica regras de transicao
+│   │   ├── vaccine_schema.py # valida next_dose > application_date
+│   │   ├── financial_schema.py
+│   │   ├── inventory_schema.py
+│   │   ├── donation_schema.py
+│   │   ├── role_schema.py
+│   │   └── permission_schema.py
 │   │
 │   ├── services/
-│   │   ├── auth_service.py   # embeds role in JWT payload
+│   │   ├── auth_service.py   # inclui role no payload do JWT
 │   │   ├── user_service.py
-│   │   ├── animal_service.py # enforces adoption status transition rules
+│   │   ├── animal_service.py # aplica regras de transicao de status
 │   │   ├── vaccine_service.py
-│   │   └── financial_service.py  # monthly report + deactivation only
+│   │   ├── financial_service.py  # relatorio mensal + somente desativacao
+│   │   ├── inventory_service.py
+│   │   ├── donation_service.py
+│   │   ├── role_service.py
+│   │   └── permission_service.py
 │   │
 │   ├── routes/
-│   │   ├── auth.py
-│   │   ├── users.py
+│   │   ├── auth_route.py
+│   │   ├── users_route.py
 │   │   ├── animals_route.py
-│   │   ├── vaccines.py
-│   │   └── financial.py
+│   │   ├── vaccines_route.py
+│   │   ├── financial_route.py
+│   │   ├── inventory_route.py
+│   │   ├── donations_route.py
+│   │   ├── roles_route.py
+│   │   └── permissions_route.py
+│   │
+│   ├── dependencies/
+│   │   └── auth_check.py     # validacao de permissoes
+│   │
+│   ├── middlewares/
+│   │   └── trace_middleware.py
 │   │
 │   ├── utils/
 │   │   └── hash.py           # BCrypt hash_password / verify_password
@@ -72,7 +99,7 @@ Access is restricted to authenticated internal users only — no public-facing e
 │   │
 │   └── main.py
 │
-├── seed.py                   # Sample data for development
+├── seed.py                   # Dados de exemplo para desenvolvimento
 ├── alembic.ini
 ├── docker-compose.yml
 ├── Dockerfile
@@ -84,7 +111,7 @@ Access is restricted to authenticated internal users only — no public-facing e
 
 ## 🔐 Role-Based Access Control
 
-The user's role is embedded in the JWT at login — no database round-trip needed per request.
+A role do usuario fica embutida no JWT no login — sem round-trip no banco por request.
 
 | Role         | Animals | Vaccines | Financial | Users | Delete |
 |--------------|:----:|:--------:|:---------:|:-----:|:------:|
@@ -97,28 +124,32 @@ The user's role is embedded in the JWT at login — no database round-trip neede
 ## 📋 Business Rules
 
 **Animals:**
-- Status transitions are strictly enforced:
+- Transicoes de status sao estritamente aplicadas:
   ```
   disponivel → em_processo → adotado
   em_processo → disponivel  (if adoption falls through)
   ```
-  An animal cannot be marked as `adotado` without going through `em_processo` first.
+  Um animal nao pode ser marcado como `adotado` sem passar por `em_processo`.
 
-- `microchipped` indicates whether the animal has a microchip.
+- `microchipped` indica se o animal possui microchip.
 
 **Vaccines:**
-- `next_dose` is mandatory — vaccines must always have a due date.
-- `next_dose` must be after `application_date` (validated by Pydantic).
+- `next_dose` e obrigatorio — vacinas precisam sempre ter data de reforco.
+- `next_dose` deve ser posterior a `application_date` (validado pelo Pydantic).
 
 **Financial:**
-- Records **cannot be deleted** — only deactivated (`is_active = False`).
-- Only admins and the financial role can access financial data.
+- Registros **nao podem ser deletados** — apenas desativados (`is_active = False`).
+- Somente admin e financeiro acessam dados financeiros.
+
+**Donations + Inventory:**
+- Doacoes podem incluir dinheiro, itens ou ambos.
+- Doacoes de itens geram movimentos de estoque automaticamente.
 
 ---
 
 ## 🚀 Setup
 
-### 1. Create virtual environment
+### 1. Criar ambiente virtual
 
 ```bash
 python -m venv venv
@@ -126,13 +157,13 @@ source venv/bin/activate  # Linux/Mac
 venv\Scripts\activate     # Windows
 ```
 
-### 2. Install dependencies
+### 2. Instalar dependencias
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 3. Configure .env
+### 3. Configurar .env
 
 ```bash
 cp .env.example .env
@@ -141,7 +172,7 @@ cp .env.example .env
 ```env
 POSTGRES_USER=abrigo_user
 POSTGRES_PASSWORD=your_password
-POSTGRES_SERVER=db:5432          # Use 'localhost:5432' for local dev
+POSTGRES_SERVER=db:5432          # Use 'localhost:5432' para dev local
 POSTGRES_DB=abrigo_animais
 
 JWT_SECRET_KEY=generate_with_python_secrets
@@ -151,26 +182,26 @@ JWT_EXPIRE_MINUTES=480
 FRONTEND_URL=http://localhost:5173
 ```
 
-> Generate a secure key:
+> Gerar uma chave segura:
 > ```bash
 > python -c "import secrets; print(secrets.token_hex(32))"
 > ```
 
-### 4. Run migrations
+### 4. Rodar migrations
 
 ```bash
 alembic upgrade head
 ```
 
-This creates all tables and the default admin user.
+Isso cria todas as tabelas e o usuario admin padrao.
 
-### 5. (Optional) Seed sample data
+### 5. (Opcional) Seed de dados de exemplo
 
 ```bash
 python seed.py
 ```
 
-### 6. Start the server
+### 6. Iniciar o servidor
 
 ```bash
 uvicorn app.main:app --reload --port 8000
@@ -184,14 +215,34 @@ uvicorn app.main:app --reload --port 8000
 ## 🐳 Docker
 
 ```bash
-# Create the external volume (first time only)
+# Criar o volume externo (primeira vez)
 docker volume create abrigo-animais-db-volume
 
-# Build and start
+# Build e start
 docker compose up -d --build
 
-# Run seed after containers are healthy
+# Rodar seed apos containers estarem saudaveis
 docker compose exec api python seed.py
+```
+
+---
+
+## 🧪 Tests
+
+```bash
+pip install -r requirements.txt -r requirements-dev.txt
+```
+
+Rodar todos os testes (precisa de Docker rodando para o Postgres do testcontainers):
+
+```bash
+pytest
+```
+
+Rodar apenas unit tests (sem Docker):
+
+```bash
+pytest tests/unit
 ```
 
 ---
@@ -201,62 +252,88 @@ docker compose exec api python seed.py
 ### Authentication
 | Method | Route         | Auth | Description                  |
 |--------|---------------|------|------------------------------|
-| POST   | `/auth/login` | ❌    | Login — returns JWT + role   |
+| POST   | `/auth/login` | ❌    | Login — retorna JWT + role   |
 | POST   | `/auth/token` | ❌    | OAuth2 login (Swagger UI)    |
+| GET    | `/status`     | ❌    | Health check                 |
 
-### Users — admin only
+### Users
 | Method | Route                        | Description          |
 |--------|------------------------------|----------------------|
-| GET    | `/users`                     | List all users       |
-| POST   | `/users`                     | Create user          |
-| PATCH  | `/users/{id}/deactivate`     | Deactivate user      |
-| PATCH  | `/users/{id}/activate`       | Reactivate user      |
+| GET    | `/users/me`                  | Perfil do usuario atual (autenticado) |
+|        |                              | **Admin only:** abaixo |
+| GET    | `/users`                     | Listar todos os usuarios |
+| POST   | `/users`                     | Criar usuario           |
+| PATCH  | `/users/{id}/deactivate`     | Desativar usuario       |
+| PATCH  | `/users/{id}/activate`       | Reativar usuario        |
 
 ### Animals — admin + voluntario
 | Method | Route                 | Description                              |
 |--------|-----------------------|------------------------------------------|
-| GET    | `/animals`               | List all active animals                     |
-| GET    | `/animals/{id}`          | Get animal by ID                            |
-| POST   | `/animals`               | Register new animal                         |
-| PATCH  | `/animals/{id}`          | Update animal details                       |
-| PATCH  | `/animals/{id}/status`   | Update adoption status (rules enforced)     |
-| DELETE | `/animals/{id}`          | Deactivate animal (admin only)              |
+| GET    | `/animals`               | Listar animais ativos                       |
+| GET    | `/animals/{id}`          | Buscar animal por ID                        |
+| POST   | `/animals`               | Cadastrar novo animal                       |
+| PATCH  | `/animals/{id}`          | Atualizar dados do animal                   |
+| PATCH  | `/animals/{id}/status`   | Atualizar status de adocao (regras)         |
+| DELETE | `/animals/{id}`          | Desativar animal (admin apenas)             |
+| POST   | `/animals/{id}/image`    | Enviar ou substituir imagem do animal       |
 
 ### Vaccines — admin + voluntario
 | Method | Route                          | Description                  |
 |--------|--------------------------------|------------------------------|
-| GET    | `/vaccines/alerts/overdue`     | List overdue vaccines        |
-| GET    | `/vaccines/alerts/due-soon`    | List vaccines due soon       |
-| GET    | `/vaccines/animal/{animal_id}` | List vaccines for an animal  |
-| POST   | `/vaccines`                    | Register vaccine             |
-| PATCH  | `/vaccines/{id}`               | Update vaccine record        |
+| GET    | `/vaccines/alerts/overdue`     | Listar vacinas em atraso     |
+| GET    | `/vaccines/alerts/due-soon`    | Listar vacinas a vencer      |
+| GET    | `/vaccines/animal/{animal_id}` | Listar vacinas do animal     |
+| POST   | `/vaccines`                    | Registrar vacina             |
+| PATCH  | `/vaccines/{id}`               | Atualizar registro da vacina |
+| DELETE | `/vaccines/{id}`               | Desativar registro da vacina |
 
 ### Financial — admin + financeiro
 | Method | Route                             | Description                  |
 |--------|-----------------------------------|------------------------------|
-| GET    | `/financial`                      | List all active records      |
-| POST   | `/financial`                      | Register income or expense   |
-| PATCH  | `/financial/{id}/deactivate`      | Deactivate record (no delete)|
-| GET    | `/financial/report/{year}/{month}`| Monthly report               |
+| GET    | `/financial`                      | Listar registros ativos      |
+| GET    | `/financial/{id}`                 | Buscar registro por ID       |
+| POST   | `/financial`                      | Registrar entrada ou saida   |
+| PATCH  | `/financial/{id}/deactivate`      | Desativar registro (sem delete)|
+| GET    | `/financial/report/{year}/{month}`| Relatorio mensal             |
+
+### Inventory — admin + financeiro
+| Method | Route                            | Description                     |
+|--------|----------------------------------|---------------------------------|
+| GET    | `/inventory/items`               | Listar itens do estoque         |
+| GET    | `/inventory/items/{item_id}`     | Buscar item do estoque          |
+| POST   | `/inventory/items`               | Criar item no estoque           |
+| PATCH  | `/inventory/items/{item_id}`     | Atualizar item do estoque       |
+| PATCH  | `/inventory/items/{item_id}/deactivate` | Desativar item          |
+| POST   | `/inventory/movements`           | Registrar movimento de estoque  |
+| GET    | `/inventory/movements`           | Listar movimentos de estoque    |
+| GET    | `/inventory/stock`               | Consultar saldo de estoque      |
+
+### Donations — admin + financeiro
+| Method | Route                          | Description                         |
+|--------|--------------------------------|-------------------------------------|
+| GET    | `/donations`                   | Listar doacoes                      |
+| GET    | `/donations/{id}`              | Buscar doacao por ID                |
+| POST   | `/donations`                   | Registrar doacao (dinheiro ou itens)|
+| PATCH  | `/donations/{id}/deactivate`   | Desativar doacao                    |
+
+### Roles and Permissions — admin only
+| Method | Route           | Description            |
+|--------|-----------------|------------------------|
+| GET    | `/roles`        | Listar roles             |
+| POST   | `/roles`        | Criar role               |
+| PATCH  | `/roles/{id}`   | Atualizar permissoes da role |
+| GET    | `/permissions`  | Listar permissoes        |
+| POST   | `/permissions`  | Criar permissao          |
 
 ---
 
 ## ⚙️ Adding a New Feature
 
-1. Create the model in `app/models/` (import `BaseModel` from `base_model.py`)
-2. Export it from `app/models/__init__.py`
-3. Import it in `app/migrations/env.py`
-4. Create the DAO in `app/daos/`
-5. Create the service in `app/services/`
-6. Create the route in `app/routes/` and register it in `app/routes/__init__.py` and `app/main.py`
-7. Generate migration: `alembic revision --autogenerate -m "description"`
+1. Criar o model em `app/models/` (import `BaseModel` de `base_model.py`)
+2. Exportar em `app/models/__init__.py`
+3. Importar em `app/migrations/env.py`
+4. Criar o DAO em `app/daos/`
+5. Criar o service em `app/services/`
+6. Criar a route em `app/routes/` e registrar em `app/routes/__init__.py` e `app/main.py`
+7. Gerar migration: `alembic revision --autogenerate -m "description"`
 
----
-
-## 📌 Roadmap
-
-- [ ] Automatic vaccine notifications (email/push)
-- [ ] Dashboard with charts (adoptions, financial balance)
-- [ ] Adopter registration linked to adoption history
-- [ ] Animal photo upload (S3 or local storage)
-- [ ] Production deploy — Gunicorn + Nginx + HTTPS
