@@ -250,80 +250,80 @@ pytest tests/unit
 ## 🌐 API Endpoints
 
 ### Authentication
-| Method | Route         | Auth | Description                  |
-|--------|---------------|------|------------------------------|
-| POST   | `/auth/login` | ❌    | Login — retorna JWT + role   |
-| POST   | `/auth/token` | ❌    | OAuth2 login (Swagger UI)    |
-| GET    | `/status`     | ❌    | Health check                 |
+| Method | Route         | Auth | Request (campos) | Response (campos) | Description |
+|--------|---------------|------|------------------|-------------------|-------------|
+| POST   | `/auth/login` | ❌    | Form: `username` (email), `password` | `access_token`, `token_type`, `user_name`, `user_email`, `role` | Login — retorna JWT + role |
+| GET    | `/status`     | ❌    | — | `status`, `system` | Health check |
 
 ### Users
-| Method | Route                        | Description          |
-|--------|------------------------------|----------------------|
-| GET    | `/users/me`                  | Perfil do usuario atual (autenticado) |
-|        |                              | **Admin only:** abaixo |
-| GET    | `/users`                     | Listar todos os usuarios |
-| POST   | `/users`                     | Criar usuario           |
-| PATCH  | `/users/{id}/deactivate`     | Desativar usuario       |
-| PATCH  | `/users/{id}/activate`       | Reativar usuario        |
+| Method | Route                        | Auth | Request (campos) | Response (campos) | Description |
+|--------|------------------------------|------|------------------|-------------------|-------------|
+| GET    | `/users/me`                  | ✅ | — | `id`, `full_name`, `email`, `is_active`, `role`, `permissions[]` | Perfil do usuario atual (autenticado) |
+| GET    | `/users`                     | ✅ (admin) | Query: `page`, `page_size` | `data[]` (user), `pagination` (`actual_page`, `page_size`, `total_pages`, `total_records`) | Listar todos os usuarios |
+| GET    | `/users/{id}`                | ✅ (admin) | Path: `user_id` | `id`, `full_name`, `email`, `is_active`, `role`, `permissions[]` | Buscar usuario por ID |
+| POST   | `/users`                     | ✅ (admin) | Body: `full_name`, `email`, `password`, `role`, `permissions[]` | `id`, `full_name`, `email`, `is_active`, `role`, `permissions[]` | Criar usuario |
+| PATCH  | `/users/{id}`                | ✅ (admin) | Path: `user_id`, Body: `full_name?`, `role?`, `permissions?[]` | `id`, `full_name`, `email`, `is_active`, `role`, `permissions[]` | Atualizar usuario |
+| PATCH  | `/users/{id}/deactivate`     | ✅ (admin) | Path: `user_id` | `message` | Desativar usuario |
+| PATCH  | `/users/{id}/activate`       | ✅ (admin) | Path: `user_id` | `message` | Reativar usuario |
 
 ### Animals — admin + voluntario
-| Method | Route                 | Description                              |
-|--------|-----------------------|------------------------------------------|
-| GET    | `/animals`               | Listar animais ativos                       |
-| GET    | `/animals/{id}`          | Buscar animal por ID                        |
-| POST   | `/animals`               | Cadastrar novo animal                       |
-| PATCH  | `/animals/{id}`          | Atualizar dados do animal                   |
-| PATCH  | `/animals/{id}/status`   | Atualizar status de adocao (regras)         |
-| DELETE | `/animals/{id}`          | Desativar animal (admin apenas)             |
-| POST   | `/animals/{id}/image`    | Enviar ou substituir imagem do animal       |
+| Method | Route                 | Auth | Request (campos) | Response (campos) | Description |
+|--------|-----------------------|------|------------------|-------------------|-------------|
+| GET    | `/animals`               | ✅ | Query: `include_inactive`, `page`, `page_size` | `data[]` (animal), `pagination` (`actual_page`, `page_size`, `total_pages`, `total_records`) | Listar animais ativos |
+| GET    | `/animals/{id}`          | ✅ | Path: `animal_id` | `id`, `name`, `estimated_age`, `vaccines[]`, `size`, `species`, `adoption_status`, `entry_date`, `is_active`, `notes`, `neutered`, `dewormed`, `socializes_with_other_animals`, `color`, `microchipped`, `image_path`, `created_at`, `updated_at` | Buscar animal por ID |
+| POST   | `/animals`               | ✅ | Form: `name`, `estimated_age`, `size`, `species`, `entry_date`, `notes?`, `neutered?`, `dewormed?`, `socializes_with_other_animals?`, `color?`, `microchipped?`, `vaccines?` (JSON lista), File: `image` | Animal completo (campos acima) | Cadastrar novo animal |
+| PATCH  | `/animals/{id}`          | ✅ | Path: `animal_id`, Body: `name?`, `estimated_age?`, `size?`, `species?`, `notes?`, `neutered?`, `dewormed?`, `socializes_with_other_animals?`, `color?`, `microchipped?` | `message` | Atualizar dados do animal |
+| PATCH  | `/animals/{id}/status`   | ✅ | Path: `animal_id`, Body: `adoption_status` | `message` | Atualizar status de adocao (regras) |
+| DELETE | `/animals/{id}`          | ✅ | Path: `animal_id` | `message` | Desativar animal (admin apenas) |
+| POST   | `/animals/{id}/image`    | ✅ | Path: `animal_id`, File: `image` | Animal completo (campos acima) | Enviar ou substituir imagem do animal |
 
 ### Vaccines — admin + voluntario
-| Method | Route                          | Description                  |
-|--------|--------------------------------|------------------------------|
-| GET    | `/vaccines/alerts/overdue`     | Listar vacinas em atraso     |
-| GET    | `/vaccines/alerts/due-soon`    | Listar vacinas a vencer      |
-| GET    | `/vaccines/animal/{animal_id}` | Listar vacinas do animal     |
-| POST   | `/vaccines`                    | Registrar vacina             |
-| PATCH  | `/vaccines/{id}`               | Atualizar registro da vacina |
-| DELETE | `/vaccines/{id}`               | Desativar registro da vacina |
+| Method | Route                          | Auth | Request (campos) | Response (campos) | Description |
+|--------|--------------------------------|------|------------------|-------------------|-------------|
+| GET    | `/vaccines/alerts/overdue`     | ✅ | — | `id`, `animal_id`, `animal_name`, `name`, `next_dose`, `status` | Listar vacinas em atraso |
+| GET    | `/vaccines/alerts/due-soon`    | ✅ | Query: `days` | `id`, `animal_id`, `animal_name`, `name`, `next_dose`, `status` | Listar vacinas a vencer |
+| GET    | `/vaccines/animal/{animal_id}` | ✅ | Path: `animal_id` | `id`, `animal_id`, `name`, `application_date`, `next_dose`, `notes`, `is_active`, `created_at` | Listar vacinas do animal |
+| POST   | `/vaccines`                    | ✅ | Body: `animal_id`, `name`, `application_date`, `next_dose?`, `notes?` | `id`, `animal_id`, `name`, `application_date`, `next_dose`, `notes`, `is_active`, `created_at` | Registrar vacina |
+| PATCH  | `/vaccines/{id}`               | ✅ | Path: `vaccine_id`, Body: `name?`, `application_date?`, `next_dose?`, `notes?` | `id`, `animal_id`, `name`, `application_date`, `next_dose`, `notes`, `is_active`, `created_at` | Atualizar registro da vacina |
+| DELETE | `/vaccines/{id}`               | ✅ | Path: `vaccine_id` | `message` | Desativar registro da vacina |
 
 ### Financial — admin + financeiro
-| Method | Route                             | Description                  |
-|--------|-----------------------------------|------------------------------|
-| GET    | `/financial`                      | Listar registros ativos      |
-| GET    | `/financial/{id}`                 | Buscar registro por ID       |
-| POST   | `/financial`                      | Registrar entrada ou saida   |
-| PATCH  | `/financial/{id}/deactivate`      | Desativar registro (sem delete)|
-| GET    | `/financial/report/{year}/{month}`| Relatorio mensal             |
+| Method | Route                             | Auth | Request (campos) | Response (campos) | Description |
+|--------|-----------------------------------|------|------------------|-------------------|-------------|
+| GET    | `/financial`                      | ✅ | — | `id`, `type`, `value`, `date`, `category`, `description`, `donor`, `is_active`, `created_at` | Listar registros ativos |
+| GET    | `/financial/{id}`                 | ✅ | Path: `record_id` | `id`, `type`, `value`, `date`, `category`, `description`, `donor`, `is_active`, `created_at` | Buscar registro por ID |
+| POST   | `/financial`                      | ✅ | Body: `type`, `value`, `date`, `category`, `description?`, `donor?` | `id`, `type`, `value`, `date`, `category`, `description`, `donor`, `is_active`, `created_at` | Registrar entrada ou saida |
+| PATCH  | `/financial/{id}/deactivate`      | ✅ | Path: `record_id` | `message` | Desativar registro (sem delete) |
+| GET    | `/financial/report/{year}/{month}`| ✅ | Path: `year`, `month` | `year`, `month`, `total_income`, `total_expenses`, `balance`, `records[]` | Relatorio mensal |
 
 ### Inventory — admin + financeiro
-| Method | Route                            | Description                     |
-|--------|----------------------------------|---------------------------------|
-| GET    | `/inventory/items`               | Listar itens do estoque         |
-| GET    | `/inventory/items/{item_id}`     | Buscar item do estoque          |
-| POST   | `/inventory/items`               | Criar item no estoque           |
-| PATCH  | `/inventory/items/{item_id}`     | Atualizar item do estoque       |
-| PATCH  | `/inventory/items/{item_id}/deactivate` | Desativar item          |
-| POST   | `/inventory/movements`           | Registrar movimento de estoque  |
-| GET    | `/inventory/movements`           | Listar movimentos de estoque    |
-| GET    | `/inventory/stock`               | Consultar saldo de estoque      |
+| Method | Route                            | Auth | Request (campos) | Response (campos) | Description |
+|--------|----------------------------------|------|------------------|-------------------|-------------|
+| GET    | `/inventory/items`               | ✅ | Query: `include_inactive`, `page`, `page_size` | `data[]` (item), `pagination` (`actual_page`, `page_size`, `total_pages`, `total_records`) | Listar itens do estoque |
+| GET    | `/inventory/items/{item_id}`     | ✅ | Path: `item_id` | `id`, `name`, `description`, `unit`, `is_active`, `created_at`, `updated_at` | Buscar item do estoque |
+| POST   | `/inventory/items`               | ✅ | Body: `name`, `description?`, `unit?` | `id`, `name`, `description`, `unit`, `is_active`, `created_at`, `updated_at` | Criar item no estoque |
+| PATCH  | `/inventory/items/{item_id}`     | ✅ | Path: `item_id`, Body: `name?`, `description?`, `unit?` | `id`, `name`, `description`, `unit`, `is_active`, `created_at`, `updated_at` | Atualizar item do estoque |
+| PATCH  | `/inventory/items/{item_id}/deactivate` | ✅ | Path: `item_id` | `message` | Desativar item |
+| POST   | `/inventory/movements`           | ✅ | Body: `item_id`, `type` (`entrada`/`saida`), `quantity`, `date`, `unit?`, `note?`, `reference?` | `id`, `item_id`, `type`, `quantity`, `unit`, `date`, `note`, `reference`, `created_at` | Registrar movimento de estoque |
+| GET    | `/inventory/movements`           | ✅ | Query: `item_id?` | `id`, `item_id`, `type`, `quantity`, `unit`, `date`, `note`, `reference`, `created_at` | Listar movimentos de estoque |
+| GET    | `/inventory/stock`               | ✅ | — | `item_id`, `item_name`, `unit`, `is_active`, `balance` | Consultar saldo de estoque |
 
 ### Donations — admin + financeiro
-| Method | Route                          | Description                         |
-|--------|--------------------------------|-------------------------------------|
-| GET    | `/donations`                   | Listar doacoes                      |
-| GET    | `/donations/{id}`              | Buscar doacao por ID                |
-| POST   | `/donations`                   | Registrar doacao (dinheiro ou itens)|
-| PATCH  | `/donations/{id}/deactivate`   | Desativar doacao                    |
+| Method | Route                          | Auth | Request (campos) | Response (campos) | Description |
+|--------|--------------------------------|------|------------------|-------------------|-------------|
+| GET    | `/donations`                   | ✅ | — | `id`, `donor`, `date`, `monetary_value`, `description`, `is_active`, `created_at`, `items[]` | Listar doacoes |
+| GET    | `/donations/{id}`              | ✅ | Path: `donation_id` | `id`, `donor`, `date`, `monetary_value`, `description`, `is_active`, `created_at`, `items[]` | Buscar doacao por ID |
+| POST   | `/donations`                   | ✅ | Body: `donor?`, `date`, `monetary_value?`, `description?`, `items[]` (cada item: `item_id`, `quantity`, `unit?`) | `id`, `donor`, `date`, `monetary_value`, `description`, `is_active`, `created_at`, `items[]` | Registrar doacao (dinheiro ou itens) |
+| PATCH  | `/donations/{id}/deactivate`   | ✅ | Path: `donation_id` | `message` | Desativar doacao |
 
 ### Roles and Permissions — admin only
-| Method | Route           | Description            |
-|--------|-----------------|------------------------|
-| GET    | `/roles`        | Listar roles             |
-| POST   | `/roles`        | Criar role               |
-| PATCH  | `/roles/{id}`   | Atualizar permissoes da role |
-| GET    | `/permissions`  | Listar permissoes        |
-| POST   | `/permissions`  | Criar permissao          |
+| Method | Route           | Auth | Request (campos) | Response (campos) | Description |
+|--------|-----------------|------|------------------|-------------------|-------------|
+| GET    | `/roles`        | ✅ (admin) | — | `id`, `name`, `permissions[]` | Listar roles |
+| POST   | `/roles`        | ✅ (admin) | Body: `name`, `permissions[]` | `id`, `name`, `permissions[]` | Criar role |
+| PATCH  | `/roles/{id}`   | ✅ (admin) | Path: `role_id`, Body: `permissions?[]` | `id`, `name`, `permissions[]` | Atualizar permissoes da role |
+| GET    | `/permissions`  | ✅ (admin) | — | `id`, `name`, `description` | Listar permissoes |
+| POST   | `/permissions`  | ✅ (admin) | Body: `name`, `description?` | `id`, `name`, `description` | Criar permissao |
 
 ---
 
