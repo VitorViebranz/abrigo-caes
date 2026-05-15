@@ -45,7 +45,7 @@ class AnimalDAO:
             .options(selectinload(AnimalModel.vaccines))
         )
         result = await self._session.execute(stmt)
-        return result.scalar_one_or_none()
+        return result.unique().scalar_one_or_none()
 
     async def get_by_status(self, status: AdoptionStatus) -> list[AnimalModel]:
         result = await self._session.execute(

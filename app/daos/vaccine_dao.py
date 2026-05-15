@@ -22,7 +22,7 @@ class VaccineDAO:
         result = await self._session.execute(
             select(VaccineModel).where(VaccineModel.id == vaccine_id)
         )
-        return result.scalar_one_or_none()
+        return result.unique().scalar_one_or_none()
 
     async def get_overdue(self) -> list[VaccineModel]:
         """Vaccines where next_dose is in the past and the record is active."""
@@ -57,7 +57,7 @@ class VaccineDAO:
         result = await self._session.execute(
             select(VaccineModel).where(VaccineModel.id == vaccine_id)
         )
-        vaccine = result.scalar_one_or_none()
+        vaccine = result.unique().scalar_one_or_none()
         if not vaccine:
             return None
         for field, value in kwargs.items():

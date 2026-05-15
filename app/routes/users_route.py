@@ -3,15 +3,34 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from configs import get_db
 from configs.decorators import route_logger
-from dependencies import PermissionChecker
+from configs.security import verify_token
+from dependencies import PermissionChecker, get_user_permissions
 from schemas import UserCreateRequest, UserUpdateRequest, UserResponse, UserListResponse, PaginationParams
 from services import UserService
+
+users_me_router = APIRouter(prefix="/users", tags=["Users"])
 
 users_router = APIRouter(
     prefix="/users", 
     tags=["Users"],
     dependencies=[Depends(PermissionChecker("manage_all"))]
 )
+
+
+@users_me_router.get(
+    "/me",
+    response_model=UserResponse,
+    summary="Get current user profile"
+)
+@route_logger
+async def get_current_user_profile(
+    request: Request,
+    current_user = Depends(verify_token),
+    permissions: list[str] = Depends(get_user_permissions),
+):
+    user_data = UserResponse.model_validate(current_user).model_dump()
+    user_data["permissions"] = permissions
+    return user_data
 
 @users_router.get(
     "",

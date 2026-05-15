@@ -29,7 +29,7 @@ class UserDAO:
     async def get_by_id(self, user_id: int) -> User | None:
         stmt = select(User).where(User.id == user_id)
         result = await self._session.execute(stmt)
-        return result.scalar_one_or_none()
+        return result.unique().scalar_one_or_none()
 
     async def create(self, full_name: str, email: str, hashed_password: str, role_id: int | None) -> User:
         stmt = insert(User).values(

@@ -15,7 +15,7 @@ class PermissionDAO:
     async def get_by_name(self, name: str) -> PermissionModel | None:
         stmt = select(PermissionModel).where(PermissionModel.name == name)
         result = await self._session.execute(stmt)
-        return result.scalar_one_or_none()
+        return result.unique().scalar_one_or_none()
 
     async def create(self, name: str, description: str | None = None) -> PermissionModel:
         stmt = insert(PermissionModel).values(name=name, description=description)

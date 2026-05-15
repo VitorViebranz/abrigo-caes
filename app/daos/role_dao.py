@@ -23,6 +23,7 @@ class RoleDAO:
             select(RoleModel)
             .options(selectinload(RoleModel.permissions))
             .where(RoleModel.id == role_id)
+            .execution_options(populate_existing=True)
         )
         result = await self._session.execute(stmt)
         return result.unique().scalar_one_or_none()
@@ -45,6 +46,7 @@ class RoleDAO:
                     ]
                 )
             )
+        await self._session.flush()
 
     async def get_permissions_by_role(self, role_id: int) -> list[PermissionModel]:
         stmt = (

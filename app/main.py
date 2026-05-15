@@ -9,6 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from routes import (
     auth_router,
+    users_me_router,
     users_router,
     roles_router,
     permissions_router,
@@ -46,6 +47,7 @@ assets_dir = Path(__file__).resolve().parent / "assets"
 app.mount("/assets", StaticFiles(directory=str(assets_dir)), name="assets")
 
 app.include_router(auth_router)
+app.include_router(users_me_router)
 app.include_router(users_router)
 app.include_router(roles_router)
 app.include_router(permissions_router)

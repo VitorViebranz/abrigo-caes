@@ -26,7 +26,7 @@ class DonationDAO:
             .where(DonationModel.id == donation_id)
         )
         result = await self._session.execute(stmt)
-        return result.scalar_one_or_none()
+        return result.unique().scalar_one_or_none()
 
     async def create(self, donation: DonationModel, items: list[DonationItemModel]) -> DonationModel:
         self._session.add(donation)

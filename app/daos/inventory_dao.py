@@ -38,7 +38,7 @@ class InventoryItemDAO:
     async def get_by_id(self, item_id: int) -> InventoryItemModel | None:
         stmt = select(InventoryItemModel).where(InventoryItemModel.id == item_id)
         result = await self._session.execute(stmt)
-        return result.scalar_one_or_none()
+        return result.unique().scalar_one_or_none()
 
     async def create(self, **kwargs) -> InventoryItemModel:
         item = InventoryItemModel(**kwargs)
@@ -51,7 +51,7 @@ class InventoryItemDAO:
         result = await self._session.execute(
             select(InventoryItemModel).where(InventoryItemModel.id == item_id)
         )
-        item = result.scalar_one_or_none()
+        item = result.unique().scalar_one_or_none()
         if not item:
             return None
         for field, value in kwargs.items():

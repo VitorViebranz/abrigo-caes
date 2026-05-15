@@ -21,7 +21,7 @@ class FinancialDAO:
         result = await self._session.execute(
             select(FinancialModel).where(FinancialModel.id == record_id)
         )
-        return result.scalar_one_or_none()
+        return result.unique().scalar_one_or_none()
 
     async def get_by_month(self, year: int, month: int) -> list[FinancialModel]:
         result = await self._session.execute(
@@ -44,7 +44,7 @@ class FinancialDAO:
         result = await self._session.execute(
             select(FinancialModel).where(FinancialModel.id == record_id)
         )
-        record = result.scalar_one_or_none()
+        record = result.unique().scalar_one_or_none()
         if not record:
             return False
         record.is_active = False
