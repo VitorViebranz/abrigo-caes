@@ -28,7 +28,7 @@ class AnimalService:
     def __init__(self, db: AsyncSession):
         self._dao = AnimalDAO(db)
 
-        self._image_root = Path(__file__).resolve().parent / "assets" / "img" / "animals"
+        self._image_root = Path(__file__).resolve().parents[1] / "assets" / "img" / "animals"
 
     def _to_response(self, animal: AnimalModel) -> AnimalResponse:
         return AnimalResponse.model_validate(animal)

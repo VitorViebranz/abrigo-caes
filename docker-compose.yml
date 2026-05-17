@@ -10,6 +10,8 @@ services:
     hostname: abrigo-animais-api
     ports:
       - "8000:8000"
+    volumes:
+      - ./app/assets:/app/assets
     env_file: .env
     command: >
       sh -c "alembic upgrade head &&
